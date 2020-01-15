@@ -7,7 +7,7 @@
     stdlib
    ]},
   {mod, {systemd_app, []}},
-  {env,[]},
+  {env,[{watchdog_scale, 2}]},
   {modules, []},
 
   {licenses, ["Apache 2.0"]},
