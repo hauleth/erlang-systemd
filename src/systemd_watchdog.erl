@@ -21,7 +21,10 @@
 start_link() ->
     Pid = os:getpid(),
     case {watchdog_pid(), watchdog_timeout()} of
-        {Pid, Timeout} when Timeout > 0 ->
+        {Pid, TimeoutUS} when TimeoutUS > 0 ->
+            Timeout = erlang:convert_time_unit(TimeoutUS,
+                                               microsecond,
+                                               millisecond),
             gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Timeout, []);
         _ ->
             ignore
