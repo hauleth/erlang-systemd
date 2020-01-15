@@ -1,3 +1,11 @@
+<a name="0.1.2"></a>
+### 0.1.2 (2020-01-15)
+
+
+#### Bug Fixes
+
+* **systemd_watchdog:**  convert time unit from micro to milliseconds ([2a40a6e3](2a40a6e3))
+
 <a name="0.1.1"></a>
 ### 0.1.1 (2020-01-15)
 
