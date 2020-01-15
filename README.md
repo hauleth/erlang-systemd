@@ -1,9 +1,9 @@
 systemd
 =====
 
-![Hex.pm](https://img.shields.io/hexpm/v/systemd?style=flat-square)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/hauleth/erlang-systemd/Erlang%20CI?style=flat-square)
-![Codecov](https://img.shields.io/codecov/c/gh/hauleth/erlang-systemd?style=flat-square)
+[![Hex.pm](https://img.shields.io/hexpm/v/systemd?style=flat-square)](https://hex.pm/packages/systemd)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/hauleth/erlang-systemd/Erlang%20CI?style=flat-square)](https://github.com/hauleth/erlang-systemd/actions)
+[![Codecov](https://img.shields.io/codecov/c/gh/hauleth/erlang-systemd?style=flat-square)](https://codecov.io/gh/hauleth/erlang-systemd)
 
 Simple library for notifying systemd about process state.
 
