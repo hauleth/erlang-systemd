@@ -1,0 +1,16 @@
+name: Lints
+
+on: [pull_request]
+
+jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: erlang:22.0.7
+    steps:
+    - uses: actions/checkout@v1
+    - name: Elvis
+      uses: red-shirts/reviewdog-action-elvis@v1
+      with:
+        github_token: ${{ secrets.github_token }}
