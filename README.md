@@ -1,6 +1,9 @@
 systemd
 =====
 
+![Hex.pm](https://img.shields.io/hexpm/v/systemd?style=flat-square)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/hauleth/erlang-systemd/Erlang%20CI)
+
 Simple library for notifying systemd about process state.
 
 ## Features
@@ -29,22 +32,15 @@ WantedBy=multi-user.target
 
 (the `Type=notify` part is important)
 
-You can inform systemd about state of your application. In Erlang apps it can be
-pretty useful, as startup can take some time.
-
-So if you add `systemd` as your dependency, and then define:
+You can inform systemd about state of your application. To do so just call:
 
 ```erlang
-{start_phases, {systemd, []}}
+systemd:notify(ready).
 ```
 
-Or
+After your application is ready. Message about application shutting down will be
+handled automatically for you.
 
-```elixir
-[
-  start_phases: [systemd: []]
-]
-```
+## License
 
-In your application resources file then all notifying thingy will be taken care
-for you automatically. Just like that.
+See [LICENSE](LICENSE).
