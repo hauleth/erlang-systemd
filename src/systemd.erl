@@ -4,6 +4,8 @@
     ready |
     stopping |
     reloading |
+    watchdog |
+    watchdog_trigger |
     {status, unicode:chardata()} |
     {errno, non_neg_integer()} |
     {buserror, unicode:chardata()} |
@@ -48,6 +50,8 @@ notify(Format, Data) ->
 normalize_state(ready) -> "READY=1";
 normalize_state(stopping) -> "STOPPING=1";
 normalize_state(reloading) -> "RELOADING=1";
+normalize_state(watchdog) -> "WATCHDOG=1";
+normalize_state(watchdog_trigger) -> "WATCHDOG=trigger";
 normalize_state({status, Status}) -> ["STATUS=", Status];
 normalize_state({errno, Errno}) -> io_lib:fwrite("ERRNO=~B", [Errno]);
 normalize_state({buserror, Error}) -> ["BUSERROR=", Error];

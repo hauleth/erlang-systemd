@@ -28,27 +28,27 @@ start_link() ->
     end.
 
 init(Timeout) ->
-    ping(),
+    systemd:notify(watchdog),
     {ok, #state{timeout=Timeout}, Timeout}.
 
 handle_call(trigger, _Ref, State) ->
     systemd_socket:send("WATCHDOG=trigger"),
     {reply, ok, State#state{enabled=false}};
 handle_call(enable, _Ref, #state{timeout=Timeout}=State) ->
-    ping(),
+    systemd:notify(watchdog),
     {reply, ok, State#state{enabled=true}, Timeout};
 handle_call(disable, _Ref, State) ->
     {reply, ok, State#state{enabled=false}};
 handle_call(state, _Ref, State) ->
     case State of
         #state{enabled=true, timeout=Timeout} ->
-            ping(),
+            systemd:notify(watchdog),
             {reply, Timeout, State, Timeout};
         _ ->
             {reply, false, State}
     end;
 handle_call(ping, _Ref, State) ->
-    ping(),
+    systemd:notify(watchdog),
     case State of
         #state{enabled=true, timeout=Timeout} ->
             {reply, ok, State, Timeout};
@@ -60,17 +60,10 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info(timeout, #state{timeout=Timeout, enabled=true}=State) ->
-    ping(),
+    systemd:notify(watchdog),
     {noreply, State, Timeout};
 handle_info(timeout, State) ->
-    {noreply, State};
-handle_info(_Msg, State) ->
-    ?LOG_INFO("Received unknown message ~p. Stop pinging."),
     {noreply, State}.
-
-ping() ->
-    ?LOG_DEBUG("Ping systemd"),
-    systemd_socket:send("WATCHDOG=1").
 
 watchdog_pid() ->
     Return = case os:getenv(?PID) of

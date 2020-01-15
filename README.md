@@ -3,6 +3,14 @@ systemd
 
 Simple library for notifying systemd about process state.
 
+## Features
+
+- `NOTIFY_SOCKET` is handled and You can notify supervisor about events
+  happening in your application.
+- Watchdog process will be started automatically if enabled. It will also handle
+  sending keep-alive messages automatically.
+- File descriptors fetching from the environment.
+
 ## Usage
 
 Assuming you have `my_app.service` unit like that
