@@ -38,7 +38,7 @@ init(_Arg) ->
                     {Socket, Address};
                 Path ->
                     case file:read_file_info(Path) of
-                        {error, Error} ->
+                        {error, _Error} ->
                             [];
                         {ok, #file_info{access=Access}}
                           when Access =:= write; Access =:= read_write ->
