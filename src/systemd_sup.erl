@@ -1,3 +1,5 @@
+%% @hidden
+
 -module(systemd_sup).
 
 -behaviour(supervisor).
@@ -11,6 +13,11 @@ init(_Opts) ->
     SupFlags = #{
       strategy => one_for_one
      },
-    ChildSpecs = [],
+    SocketServer = #{id => socket,
+                     start => {systemd_socket, start_link, []}
+                    },
+    Watchdog = #{id => watchdog,
+                 start => {systemd_watchdog, start_link, []}
+                },
 
-    {ok, {SupFlags, ChildSpecs}}.
+    {ok, {SupFlags, [SocketServer, Watchdog]}}.
