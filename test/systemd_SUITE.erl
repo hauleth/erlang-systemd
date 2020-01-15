@@ -75,7 +75,7 @@ watchdog(Config) ->
     ct:sleep(300),
 
     Messages0 = mock_systemd:messages(Pid),
-    ?assertEqual(["WATCHDOG=1\n", "WATCHDOG=1\n"], Messages0),
+    ?assertEqual(["WATCHDOG=1\n", "WATCHDOG=1\n", "WATCHDOG=1\n"], Messages0),
     ok = stop(Config),
 
     % -------------------------------------------------------------------------
@@ -97,7 +97,7 @@ watchdog(Config) ->
     ct:sleep(300),
 
     Messages2 = mock_systemd:messages(Pid),
-    ?assertEqual(["WATCHDOG=1\n", "WATCHDOG=1\n"], Messages2),
+    ?assertEqual(["WATCHDOG=1\n", "WATCHDOG=1\n", "WATCHDOG=1\n"], Messages2),
     ok = stop(Config),
 
     % -------------------------------------------------------------------------
@@ -141,7 +141,7 @@ watchdog(Config) ->
     ?assertEqual(200, systemd:watchdog(state)),
     ct:sleep(300),
     Messages7 = mock_systemd:messages(Pid),
-    ?assertMatch(["WATCHDOG=1\n", "WATCHDOG=1\n"], Messages7),
+    ?assertEqual(["WATCHDOG=1\n", "WATCHDOG=1\n", "WATCHDOG=1\n"], Messages7),
 
     ct:log("-> disable"),
     ok = systemd:watchdog(disable),
@@ -165,7 +165,7 @@ watchdog(Config) ->
     ok = systemd:watchdog(enable),
     ct:sleep(300),
     Messages11 = mock_systemd:messages(Pid),
-    ?assertMatch(["WATCHDOG=1\n", "WATCHDOG=1\n"], Messages11),
+    ?assertEqual(["WATCHDOG=1\n", "WATCHDOG=1\n", "WATCHDOG=1\n"], Messages11),
 
     ct:log("-> trigger"),
     ok = systemd:watchdog(trigger),

@@ -28,45 +28,45 @@ start_link() ->
     end.
 
 init(Timeout) ->
-    systemd:notify(watchdog),
     State = #state{timeout=Timeout},
-    {ok, State, timeout(State)}.
+    notify(State),
+    {ok, State}.
 
 handle_call(trigger, _Ref, State) ->
     systemd:notify(watchdog_trigger),
     {reply, ok, State#state{enabled=false}};
 handle_call(enable, _Ref, State) ->
-    systemd:notify(watchdog),
     NewState = State#state{enabled=true},
-    {reply, ok, NewState, timeout(NewState)};
+    notify(NewState),
+    {reply, ok, NewState};
 handle_call(disable, _Ref, State) ->
     {reply, ok, State#state{enabled=false}};
 handle_call(state, _Ref, State) ->
     case State of
         #state{enabled=true, timeout=Timeout} ->
-            systemd:notify(watchdog),
-            {reply, Timeout, State, timeout(State)};
+            {reply, Timeout, State};
         _ ->
             {reply, false, State}
     end;
 handle_call(ping, _Ref, State) ->
     systemd:notify(watchdog),
-    {reply, ok, State, timeout(State)}.
+    {reply, ok, State}.
 
 handle_cast(_Msg, State) ->
-    {noreply, State, timeout(State)}.
+    {noreply, State}.
 
-handle_info(timeout, #state{timeout=Timeout, enabled=true}=State) ->
-    systemd:notify(watchdog),
-    {noreply, State, timeout(Timeout)};
+handle_info(keepalive, State) ->
+    notify(State),
+    {noreply, State};
 handle_info(_Msg, State) ->
-    {noreply, State, timeout(State)}.
+    {noreply, State}.
 
-timeout(#state{enabled=true, timeout=Timeout}) when Timeout > 2 ->
+notify(#state{enabled=true, timeout=Timeout}) when is_integer(Timeout) andalso Timeout > 2 ->
     {ok, Scale} = application:get_env(systemd, watchdog_scale),
-    Timeout div Scale;
-timeout(_State) ->
-    infinity.
+    systemd:notify(watchdog),
+    erlang:send_after(Timeout div Scale, self(), keepalive);
+notify(_State) ->
+    ok.
 
 watchdog_pid() ->
     Return = case os:getenv(?PID) of
