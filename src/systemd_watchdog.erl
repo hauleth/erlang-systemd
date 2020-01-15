@@ -24,12 +24,13 @@ start_link() ->
         {Pid, Timeout} when Timeout > 0 ->
             gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Timeout, []);
         _ ->
-            ignore
+            gen_server:start_link({local, ?WATCHDOG}, ?MODULE, infinity, [])
     end.
 
 init(Timeout) ->
     systemd:notify(watchdog),
-    {ok, #state{timeout=Timeout}, Timeout}.
+    State = #state{timeout=Timeout},
+    {ok, State, timeout(State)}.
 
 handle_call(trigger, _Ref, State) ->
     systemd:notify(watchdog_trigger),
