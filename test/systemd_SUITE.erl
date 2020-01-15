@@ -68,9 +68,14 @@ watchdog(Config) ->
     Pid = ?config(mock_pid, Config),
     Socket = ?config(socket, Config),
 
+    Timeout = erlang:convert_time_unit(200,
+                                       millisecond,
+                                       microsecond),
+    TimeoutList = integer_to_list(Timeout),
+
     % -------------------------------------------------------------------------
     ct:log("Watchdog sends messages when WATCHDOG_USEC is set"),
-    os:putenv("WATCHDOG_USEC", "200"),
+    os:putenv("WATCHDOG_USEC", TimeoutList),
     ok = start_with_socket(Socket),
     ct:sleep(300),
 
@@ -81,7 +86,7 @@ watchdog(Config) ->
     % -------------------------------------------------------------------------
     ct:log("Watchdog do not send messages when WATCHDOG_PID mismatch"),
     os:putenv("WATCHDOG_PID", "foo"),
-    os:putenv("WATCHDOG_USEC", "200"),
+    os:putenv("WATCHDOG_USEC", TimeoutList),
     ok = start_with_socket(Socket),
     ct:sleep(300),
 
@@ -92,7 +97,7 @@ watchdog(Config) ->
     % -------------------------------------------------------------------------
     ct:log("Watchdog send messages when WATCHDOG_PID match"),
     os:putenv("WATCHDOG_PID", os:getpid()),
-    os:putenv("WATCHDOG_USEC", "200"),
+    os:putenv("WATCHDOG_USEC", TimeoutList),
     ok = start_with_socket(Socket),
     ct:sleep(300),
 
@@ -130,8 +135,7 @@ watchdog(Config) ->
 
     % -------------------------------------------------------------------------
     ct:log("Watchdog control functions"),
-    Timeout = 200,
-    os:putenv("WATCHDOG_USEC", integer_to_list(Timeout)),
+    os:putenv("WATCHDOG_USEC", TimeoutList),
     ok = start_with_socket(Socket),
     ct:sleep(10),
     Messages6 = mock_systemd:messages(Pid),
