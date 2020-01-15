@@ -13,4 +13,10 @@ jobs:
     - name: Compile
       run: rebar3 compile
     - name: Run tests
-      run: rebar3 do ct
+      run: rebar3 do ct --cover
+    - name: Generate coverage data
+      run: rebar3 covertool generate
+    - uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./_build/test/covertool/systemd.covertool.xml
