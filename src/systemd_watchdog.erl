@@ -32,7 +32,7 @@ init(Timeout) ->
     {ok, #state{timeout=Timeout}, Timeout}.
 
 handle_call(trigger, _Ref, State) ->
-    systemd_socket:send("WATCHDOG=trigger"),
+    systemd:notify(watchdog_trigger),
     {reply, ok, State#state{enabled=false}};
 handle_call(enable, _Ref, #state{timeout=Timeout}=State) ->
     systemd:notify(watchdog),
