@@ -17,8 +17,9 @@ start(_Type, _Opts) ->
 start_phase(systemd, _Type, _Opts) ->
     ok = systemd:notify(ready).
 
-prep_stop(_State) ->
-    ok = systemd:notify(stopping).
+prep_stop(State) ->
+    ok = systemd:notify(stopping),
+    State.
 
 stop(_State) ->
     ok.

@@ -46,6 +46,14 @@ handle_call(state, _Ref, State) ->
             {reply, Timeout, State, Timeout};
         _ ->
             {reply, false, State}
+    end;
+handle_call(ping, _Ref, State) ->
+    ping(),
+    case State of
+        #state{enabled=true, timeout=Timeout} ->
+            {reply, ok, State, Timeout};
+        _ ->
+            {reply, ok, State}
     end.
 
 handle_cast(_Msg, State) ->

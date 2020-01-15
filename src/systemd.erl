@@ -61,7 +61,8 @@ normalize_state(Msg) -> Msg.
 -spec watchdog(state) -> sd_timeout()
                          ; (trigger) -> ok
                          ; (enable) -> ok
-                         ; (disable) -> ok.
+                         ; (disable) -> ok
+                         ; (ping) -> ok.
 watchdog(state) ->
     gen_server:call(?WATCHDOG, state);
 watchdog(trigger) ->
@@ -69,7 +70,9 @@ watchdog(trigger) ->
 watchdog(enable) ->
     gen_server:call(?WATCHDOG, enable);
 watchdog(disable) ->
-    gen_server:call(?WATCHDOG, disable).
+    gen_server:call(?WATCHDOG, disable);
+watchdog(ping) ->
+    gen_server:call(?WATCHDOG, ping).
 
 %% ----------------------------------------------------------------------------
 

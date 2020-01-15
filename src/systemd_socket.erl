@@ -8,6 +8,7 @@
 -define(NOTIFY_SOCKET, "NOTIFY_SOCKET").
 
 -include_lib("kernel/include/logger.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -export([send/1]).
 
@@ -20,7 +21,7 @@
 % # Internal interface
 
 send(Message) ->
-    gen_server:call(?NAME, {send, Message}).
+    gen_server:call(?NAME, {send, string:trim(Message, trailing, "\n")}).
 
 % # Behaviour implementation
 
@@ -28,38 +29,38 @@ start_link() ->
     gen_server:start_link({local, ?NAME}, ?MODULE, [], []).
 
 init(_Arg) ->
-    case has_env(?NOTIFY_SOCKET) of
-        false ->
-            {ok, []};
-        Path ->
-            Address = {local, normalize(Path)},
-            {ok, Socket} = gen_udp:open(0, [local]),
-
-            os:unsetenv(?NOTIFY_SOCKET),
-
-            {ok, {Socket, Address}}
-    end.
+    State = case has_env(?NOTIFY_SOCKET) of
+                false ->
+                    [];
+                [$@ | AbstractPath] ->
+                    Address = {local, [0 | AbstractPath]},
+                    {ok, Socket} = gen_udp:open(0, [local]),
+                    {Socket, Address};
+                Path ->
+                    case file:read_file_info(Path) of
+                        {error, Error} ->
+                            [];
+                        {ok, #file_info{access=Access}}
+                          when Access =:= write; Access =:= read_write ->
+                            Address = {local, Path},
+                            {ok, Socket} = gen_udp:open(0, [local]),
+                            {Socket, Address}
+                    end
+            end,
+    os:unsetenv(?NOTIFY_SOCKET),
+    {ok, State}.
 
 handle_call({send, Message}, _Ref, {Socket, Address}=State) ->
-    case gen_udp:send(Socket, Address, 0, [Message, $\n]) of
-        ok ->
-            ok;
-        {error, enoent} ->
-            ?LOG_ERROR("NOTIFY_SOCKET not available")
-    end,
-
+    ok = gen_udp:send(Socket, Address, 0, [Message, $\n]),
     {reply, ok, State};
 handle_call(_Msg, _Ref, []) ->
-    {reply, {error, nosocket}, []}.
+    {reply, ok, []}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info(_Msg, State) ->
     {noreply, State}.
-
-normalize([$@ | Rest]) -> [0 | Rest];
-normalize(Value) -> Value.
 
 has_env(Name) ->
     case os:getenv(Name) of
