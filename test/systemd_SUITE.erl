@@ -43,6 +43,9 @@ notify(Config) ->
     systemd:notify({status, "example status"}),
     systemd:notify({errno, 10}),
     systemd:notify({buserror, "test.example.bus.service.Error"}),
+    systemd:notify({extend_timeout, {5, microsecond}}),
+    systemd:notify({extend_timeout, {5, millisecond}}),
+    systemd:notify({extend_timeout, {5, second}}),
     systemd:notify("CUSTOM=message"),
     systemd:notify("FORMATTED=~.16b", [16#deadbeef]),
 
@@ -54,6 +57,9 @@ notify(Config) ->
                   "STATUS=example status\n",
                   "ERRNO=10\n",
                   "BUSERROR=test.example.bus.service.Error\n",
+                  "EXTEND_TIMEOUT_USEC=5\n",
+                  "EXTEND_TIMEOUT_USEC=5000\n",
+                  "EXTEND_TIMEOUT_USEC=5000000\n",
                   "CUSTOM=message\n",
                   "FORMATTED=deadbeef\n"], mock_systemd:messages(Pid)),
 
