@@ -15,17 +15,51 @@ Simple library for notifying systemd about process state.
   sending keep-alive messages automatically.
 - File descriptors fetching from the environment.
 
+## Installation
+
+Just add this to your `rebar.config`:
+
+```erlang
+{deps, [systemd]}.
+```
+
+Or in case of Mix project, to your `mix.exs`:
+
+```elixir
+defp deps do
+  [
+    {:systemd, "~> 0.2"}
+  ]
+end
+```
+
+Then call `systemd:notify(ready)` when your application is ready to work/accept
+connections.
+
+### Non-systemd systems
+
+This application and all functions within are safe to call even in non-systemd
+and non-Linux OSes. In case if there is no systemd configuration options then
+all functions will simply work as (almost) no-ops.
+
 ## Usage
 
 Assuming you have `my_app.service` unit like that
 
-```
+```systemd
 [Unit]
-Description=my test app
+Description=My Awesome App
 
 [Service]
+User=appuser
+Group=appgroup
 Type=notify
+# Important! This need to run in foreground and not fork.
+# Check documentation of your release tool.
 ExecStart=/path/to/my_app start
+WatchdogSec=10s
+NotifyAccess=main
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
@@ -39,8 +73,16 @@ You can inform systemd about state of your application. To do so just call:
 systemd:notify(ready).
 ```
 
-After your application is ready. Message about application shutting down will be
-handled automatically for you.
+This will make `systemctl start my_app.service` to wait until application is up
+and running.
+
+If you want to restart your application you can notify systemd about it with:
+
+```erlang
+systemd:notify(reloading).
+```
+
+Message about application shutting down will be handled automatically for you.
 
 ## License
 
