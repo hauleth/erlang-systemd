@@ -7,10 +7,7 @@
 -include_lib("kernel/include/logger.hrl").
 -include("systemd.hrl").
 
--define(PID, "WATCHDOG_PID").
--define(TIMEOUT, "WATCHDOG_USEC").
-
--export([start_link/0,
+-export([start_link/1,
          init/1,
          handle_call/3,
          handle_cast/2,
@@ -18,17 +15,8 @@
 
 -record(state, {timeout, enabled=true}).
 
-start_link() ->
-    Pid = os:getpid(),
-    case {watchdog_pid(), watchdog_timeout()} of
-        {Pid, TimeoutUS} when TimeoutUS > 0 ->
-            Timeout = erlang:convert_time_unit(TimeoutUS,
-                                               microsecond,
-                                               millisecond),
-            gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Timeout, []);
-        _ ->
-            gen_server:start_link({local, ?WATCHDOG}, ?MODULE, infinity, [])
-    end.
+start_link(Timeout) ->
+    gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Timeout, []).
 
 init(Timeout) ->
     State = #state{timeout=Timeout},
@@ -70,23 +58,3 @@ notify(#state{enabled=true, timeout=Timeout}) when is_integer(Timeout) andalso T
     erlang:send_after(Timeout div Scale, self(), keepalive);
 notify(_State) ->
     ok.
-
-watchdog_pid() ->
-    Return = case os:getenv(?PID) of
-                 false -> os:getpid();
-                 Env -> Env
-             end,
-    os:unsetenv(?PID),
-    Return.
-
-watchdog_timeout() ->
-    Return = case os:getenv(?TIMEOUT) of
-                 false -> -1;
-                 Env ->
-                     case string:to_integer(Env) of
-                         {Timeout, ""} -> Timeout;
-                         _ -> -1
-                     end
-             end,
-    os:unsetenv(?TIMEOUT),
-    Return.

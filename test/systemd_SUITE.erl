@@ -35,6 +35,8 @@ notify(init, Config) ->
 notify(_, Config) -> Config.
 
 notify(Config) ->
+    Pid = ?config(mock_pid, Config),
+
     systemd:notify(ready),
     systemd:notify(stopping),
     systemd:notify(reloading),
@@ -46,8 +48,6 @@ notify(Config) ->
 
     ct:sleep(10),
 
-    Messages = mock_systemd:messages(?config(mock_pid, Config)),
-
     ?assertEqual(["READY=1\n",
                   "STOPPING=1\n",
                   "RELOADING=1\n",
@@ -55,7 +55,14 @@ notify(Config) ->
                   "ERRNO=10\n",
                   "BUSERROR=test.example.bus.service.Error\n",
                   "CUSTOM=message\n",
-                  "FORMATTED=deadbeef\n"], Messages),
+                  "FORMATTED=deadbeef\n"], mock_systemd:messages(Pid)),
+
+    ct:log("Connection address persists between process restarts"),
+    gen_server:stop(systemd_socket, error, 100),
+    ct:sleep(10),
+    systemd:notify(ready),
+    ct:sleep(10),
+    ?assertEqual(["READY=1\n"], mock_systemd:messages(Pid)),
     ok.
 
 watchdog(init, Config) -> Config;
@@ -176,6 +183,20 @@ watchdog(Config) ->
     ct:sleep(10),
     Messages12 = mock_systemd:messages(Pid),
     ?assertMatch(["WATCHDOG=trigger\n"], Messages12),
+
+    ok = stop(Config),
+
+    % -------------------------------------------------------------------------
+    ct:log("Watchdog process send messages after restart"),
+    os:putenv("WATCHDOG_PID", os:getpid()),
+    os:putenv("WATCHDOG_USEC", TimeoutList),
+    ok = start_with_socket(Socket),
+    ct:sleep(10),
+
+    ?assertEqual(["WATCHDOG=1\n"], mock_systemd:messages(Pid)),
+    gen_server:stop(systemd_watchdog, error, 100),
+    ct:sleep(10),
+    ?assertEqual(["WATCHDOG=1\n"], mock_systemd:messages(Pid)),
 
     ok = stop(Config),
 

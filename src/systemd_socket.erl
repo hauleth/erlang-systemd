@@ -5,14 +5,12 @@
 -behaviour(gen_server).
 
 -define(NAME, ?MODULE).
--define(NOTIFY_SOCKET, "NOTIFY_SOCKET").
 
 -include_lib("kernel/include/logger.hrl").
--include_lib("kernel/include/file.hrl").
 
 -export([send/1]).
 
--export([start_link/0,
+-export([start_link/1,
          init/1,
          handle_call/3,
          handle_cast/2,
@@ -25,30 +23,13 @@ send(Message) ->
 
 % # Behaviour implementation
 
-start_link() ->
-    gen_server:start_link({local, ?NAME}, ?MODULE, [], []).
+start_link(Address) ->
+    gen_server:start_link({local, ?NAME}, ?MODULE, Address, []).
 
-init(_Arg) ->
-    State = case has_env(?NOTIFY_SOCKET) of
-                false ->
-                    [];
-                [$@ | AbstractPath] ->
-                    Address = {local, [0 | AbstractPath]},
-                    {ok, Socket} = gen_udp:open(0, [local]),
-                    {Socket, Address};
-                Path ->
-                    case file:read_file_info(Path) of
-                        {error, _Error} ->
-                            [];
-                        {ok, #file_info{access=Access}}
-                          when Access =:= write; Access =:= read_write ->
-                            Address = {local, Path},
-                            {ok, Socket} = gen_udp:open(0, [local]),
-                            {Socket, Address}
-                    end
-            end,
-    os:unsetenv(?NOTIFY_SOCKET),
-    {ok, State}.
+init([]) -> {ok, []};
+init(Address) ->
+    {ok, Socket} = gen_udp:open(0, [local]),
+    {ok, {Socket, Address}}.
 
 handle_call({send, Message}, _Ref, {Socket, Address}=State) ->
     ok = gen_udp:send(Socket, Address, 0, [Message, $\n]),
@@ -61,10 +42,3 @@ handle_cast(_Msg, State) ->
 
 handle_info(_Msg, State) ->
     {noreply, State}.
-
-has_env(Name) ->
-    case os:getenv(Name) of
-        false -> false;
-        "" -> false;
-        Value -> Value
-    end.
