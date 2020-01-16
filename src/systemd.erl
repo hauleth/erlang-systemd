@@ -9,6 +9,7 @@
     {status, unicode:chardata()} |
     {errno, non_neg_integer()} |
     {buserror, unicode:chardata()} |
+    {extend_timeout, {non_neg_integer(), erlang:time_unit()}} |
     unicode:chardata().
 -type sd_timeout() :: pos_integer().
 -type fd() :: integer() | {integer(), unicode:chardata()}.
@@ -55,6 +56,9 @@ normalize_state(watchdog_trigger) -> "WATCHDOG=trigger";
 normalize_state({status, Status}) -> ["STATUS=", Status];
 normalize_state({errno, Errno}) -> io_lib:fwrite("ERRNO=~B", [Errno]);
 normalize_state({buserror, Error}) -> ["BUSERROR=", Error];
+normalize_state({extend_timeout, {Time, Unit}}) ->
+    Microsecs = erlang:convert_time_unit(Time, Unit, microsecond),
+    io_lib:fwrite("EXTEND_TIMEOUT_USEC=~B", [Microsecs]);
 normalize_state(Msg) -> Msg.
 
 %% ----------------------------------------------------------------------------
