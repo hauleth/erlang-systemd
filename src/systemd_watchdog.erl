@@ -5,7 +5,7 @@
 -behaviour(gen_server).
 
 -include_lib("kernel/include/logger.hrl").
--include("systemd.hrl").
+-include("systemd_internal.hrl").
 
 -export([start_link/1,
          init/1,

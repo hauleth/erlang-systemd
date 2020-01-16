@@ -1,2 +1,3 @@
+-define(SUPERVISOR, systemd_sup).
 -define(WATCHDOG, systemd_watchdog).
 -define(LISTEN_FDS_START, 3).

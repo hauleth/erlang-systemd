@@ -19,7 +19,7 @@
               sd_timeout/0]).
 
 -include_lib("kernel/include/file.hrl").
--include("systemd.hrl").
+-include("systemd_internal.hrl").
 
 -export([notify/1,
          notify/2,
