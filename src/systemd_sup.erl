@@ -4,6 +4,8 @@
 
 -behaviour(supervisor).
 
+-include("systemd_internal.hrl").
+
 -export([start_link/1, init/1]).
 
 -define(PID, "WATCHDOG_PID").
@@ -13,7 +15,7 @@
 -include_lib("kernel/include/file.hrl").
 
 start_link(Opts) ->
-    supervisor:start_link(?MODULE, Opts).
+    supervisor:start_link({local, ?SUPERVISOR}, ?MODULE, Opts).
 
 init(_Opts) ->
     SupFlags = #{
@@ -22,21 +24,14 @@ init(_Opts) ->
     Pid = os:getpid(),
 
     SocketServer = #{id => socket,
-                     start => {systemd_socket, start_link, [notify_socket()]}
-                    },
-    Watchdog = case {watchdog_pid(), watchdog_timeout()} of
+                     start => {systemd_socket, start_link, [notify_socket()]}},
+    Timeout = case {watchdog_pid(), watchdog_timeout()} of
                    {Pid, TimeoutUS} when TimeoutUS > 0 ->
-                       Timeout = erlang:convert_time_unit(TimeoutUS,
-                                                          microsecond,
-                                                          millisecond),
-                       #{id => watchdog,
-                         start => {systemd_watchdog, start_link, [Timeout]}
-                        };
-                   _ ->
-                       #{id => watchdog,
-                         start => {systemd_watchdog, start_link, [infinity]}
-                        }
+                       erlang:convert_time_unit(TimeoutUS, microsecond, millisecond);
+                   _ -> infinity
                end,
+    Watchdog = #{id => watchdog,
+                 start => {systemd_watchdog, start_link, [Timeout]}},
 
     {ok, {SupFlags, [SocketServer, Watchdog]}}.
 

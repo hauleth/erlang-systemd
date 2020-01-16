@@ -4,8 +4,6 @@
 
 -behaviour(application).
 
--include_lib("kernel/include/logger.hrl").
-
 -export([start/2,
          prep_stop/1,
          stop/1]).
