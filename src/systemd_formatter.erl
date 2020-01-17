@@ -1,3 +1,32 @@
+%% @doc
+%% Formatter wrapper for systemd's journal level information.
+%%
+%% Journald uses log-level format similar to Linux's `printk' logging function.
+%% This simply adds special prefix to the message formatted by the formatter
+%% specified via `parent' option.
+%%
+%% This can be used with `logger_std_h' handler with `type => standard_error'.
+%%
+%% == Example ==
+%%
+%% ```
+%% logger:add_handler(stderr,
+%%                    logger_std_h,
+%%                    #{formatter => {systemd_formatter, #{}}).
+%% '''
+%%
+%% == Options ==
+%%
+%% <dl>
+%%      <dt>`parent'</dt>
+%%      <dd>"Parent" formatter that will be used as a "main" formatter.
+%%
+%%      Defaults to `logger_formatter'.
+%% </dl>
+%%
+%% Rest of the options will be passed to `parent' with this option removed.
+%%
+%% @end
 -module(systemd_formatter).
 
 -include("systemd.hrl").
