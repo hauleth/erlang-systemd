@@ -1,7 +1,10 @@
 {application, systemd,
  [{description, "systemd integration for Erlang applications"},
   {vsn, git},
-  {registered, [systemd_watchdog, systemd_socket]},
+  {registered,
+   [systemd_socket,
+    systemd_sup,
+    systemd_watchdog]},
   {applications,
    [kernel,
     stdlib

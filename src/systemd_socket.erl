@@ -28,7 +28,8 @@ start_link(Address) ->
 
 init([]) -> {ok, []};
 init(Address) ->
-    {ok, Socket} = gen_udp:open(0, [local]),
+    % We never receive on this socket, so we set is as {active, false}
+    {ok, Socket} = gen_udp:open(0, [binary, local, {active, false}]),
     {ok, {Socket, Address}}.
 
 handle_call({send, Message}, _Ref, {Socket, Address}=State) ->
