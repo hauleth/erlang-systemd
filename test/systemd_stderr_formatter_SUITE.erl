@@ -1,4 +1,4 @@
--module(systemd_formatter_SUITE).
+-module(systemd_stderr_formatter_SUITE).
 
 -compile(export_all).
 
@@ -8,21 +8,21 @@
 all() -> [default, custom_parent, log_prefix].
 
 default(_Config) ->
-    ok = systemd_formatter:check_config(#{}),
-    ok = systemd_formatter:check_config(#{depth => 2}),
-    {error, _} = systemd_formatter:check_config(#{unknown => 10}),
+    ok = systemd_stderr_formatter:check_config(#{}),
+    ok = systemd_stderr_formatter:check_config(#{depth => 2}),
+    {error, _} = systemd_stderr_formatter:check_config(#{unknown => 10}),
 
     "<0>MESSAGE=foo" = format(emergency, {string, "foo"}, #{}, #{template => ["MESSAGE=", msg]}),
     ok.
 
 custom_parent(_Config) ->
-    ok = systemd_formatter:check_config(#{parent => logger_formatter}),
-    ok = systemd_formatter:check_config(#{parent => logger_formatter,
+    ok = systemd_stderr_formatter:check_config(#{parent => logger_formatter}),
+    ok = systemd_stderr_formatter:check_config(#{parent => logger_formatter,
                                           depth => 2}),
-    {error, _} = systemd_formatter:check_config(#{parent => logger_formatter,
+    {error, _} = systemd_stderr_formatter:check_config(#{parent => logger_formatter,
                                                   unknown => 10}),
-    ok = systemd_formatter:check_config(#{parent => dumb_format}),
-    ok = systemd_formatter:check_config(#{parent => dumb_format,
+    ok = systemd_stderr_formatter:check_config(#{parent => dumb_format}),
+    ok = systemd_stderr_formatter:check_config(#{parent => dumb_format,
                                           unknown => 10}),
     ok.
 
@@ -46,7 +46,7 @@ format(Level,Msg,Meta,Config) ->
     format(#{level=>Level,msg=>Msg,meta=>add_time(Meta)},Config).
 
 format(Log,Config) ->
-    unicode:characters_to_list(systemd_formatter:format(Log,Config)).
+    unicode:characters_to_list(systemd_stderr_formatter:format(Log,Config)).
 
 add_time(#{time := _}=Meta) ->
     Meta;

@@ -12,7 +12,7 @@
 %% ```
 %% logger:add_handler(stderr,
 %%                    logger_std_h,
-%%                    #{formatter => {systemd_formatter, #{}}).
+%%                    #{formatter => {systemd_stderr_formatter, #{}}).
 %% '''
 %%
 %% == Options ==
@@ -27,7 +27,7 @@
 %% Rest of the options will be passed to `parent' with this option removed.
 %%
 %% @end
--module(systemd_formatter).
+-module(systemd_stderr_formatter).
 
 -include("systemd.hrl").
 
