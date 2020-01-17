@@ -1,10 +1,23 @@
 %% @doc
 %% Logger handler for sending messages to systemd's `journal'.
 %%
+%% == Usage ==
+%%
+%% Run this after the `systemd' application is started:
+%%
+%% ```
+%% logger:add_handler(journal,
+%%                    systemd_journal_h,
+%%                    #{formatter => {systemd_journal_formatter, #{}}).
+%% '''
+%%
+%% It is very important to use `systemd_journal_formatter' here, otherwise the
+%% messages will not be recorded.
+%%
 %% == Warning ==
 %%
-%% This logger should always be used with `systemd_journal_formatter' unless you
-%% are completely sure what you are trying to do. Otherwise you can loose your
+%% This logger <b>should</b> always be used with `systemd_journal_formatter' unless
+%% you are completely sure what you are trying to do. Otherwise you can loose your
 %% log data.
 %% @end
 -module(systemd_journal_h).
