@@ -135,8 +135,7 @@
 %% @end
 -module(systemd_journal_formatter).
 
--export([field/2,
-         format_report/2]).
+-export([format_report/2]).
 
 -export([check_config/1,
          format/2]).
@@ -153,28 +152,12 @@
 -type metakey() :: atom() | [atom()].
 -type field_definition() :: metakey() | {field_name(), metakey() | iolist()}.
 -type field_name() :: unicode:chardata().
--opaque field() :: iolist().
+-type field() :: {field_name(), iolist()}.
 
 -export_type([metakey/0,
               field_definition/0,
               field_name/0,
               field/0]).
-
-%% @doc
-%% Generate output data for field. Usable for defining `report_cb' callbacks.
-%% @end
--spec field(field_name(), Data :: iolist()) -> field().
-field(Name, Data) ->
-    Content = case string:find(Data, "\n") of
-                  nomatch -> Data;
-                  _ ->
-                      Len = iolist_size(Data),
-                      [$\n, <<Len:64/integer-little>>, $\n, Data]
-              end,
-    case string:is_empty(Content) of
-        true -> [];
-        false -> [Name, $=, Content, $\n]
-    end.
 
 %% @doc
 %% Default report formatter used for `systemd_journal_formatter'. Output format
@@ -185,7 +168,7 @@ field(Name, Data) ->
 -spec format_report(Prefix :: field_name(), logger:report()) -> [field()].
 format_report(Prefix, Report) ->
     {Format, Args} = format_fields(Report),
-    [field(Prefix, io_lib:format(Format, Args))].
+    [{Prefix, io_lib:format(Format, Args)}].
 
 format_fields(Report) when is_map(Report) ->
     format_fields(maps:to_list(Report));
@@ -312,8 +295,25 @@ check_atom_list(_) ->
 -spec format(logger:log_event(), logger:formatter_config()) ->
     unicode:chardata().
 format(LogEvent, Config) ->
-    Fields = maps:get(fields, Config, ?DEFAULT_FIELDS),
-    [build_field(Field, LogEvent, Config) || Field <- Fields].
+    Fields0 = maps:get(fields, Config, ?DEFAULT_FIELDS),
+    Fields = [build_field(Field, LogEvent, Config) || Field <- Fields0],
+    build_message(Fields).
+
+
+build_message([]) -> [];
+build_message([List | Rest]) when is_list(List) ->
+    [build_message(List) | build_message(Rest)];
+build_message([{Name, Data} | Rest]) ->
+    Content = case string:find(Data, "\n") of
+                  nomatch -> Data;
+                  _ ->
+                      Len = iolist_size(Data),
+                      [$\n, <<Len:64/integer-little>>, $\n, Data]
+              end,
+    case string:is_empty(Content) of
+        true -> build_message(Rest);
+        false -> [Name, $=, Content, $\n | build_message(Rest)]
+    end.
 
 build_field({Prefix, msg}, #{msg := Msg, meta := Meta}, Config) ->
     normalize_msg(Prefix, Msg, Meta, Config);
@@ -329,17 +329,17 @@ build_field({Prefix, syslog_facility}, LogEvent, Config) ->
     build_field({Prefix, facility}, LogEvent, Config);
 build_field({Prefix, syslog_identifier}, LogEvent, Config) ->
     build_field({Prefix, identifier}, LogEvent, Config);
-build_field({Prefix, Binary}, _LogEvent, _Config) when is_binary(Binary) ->
-    field(Prefix, Binary);
+build_field({Name, Binary}, _LogEvent, _Config) when is_binary(Binary) ->
+    {Name, Binary};
 build_field({Name, Data}, LogEvent, Config) ->
     case io_lib:printable_unicode_list(Data) of
         true ->
-            field(Name, Data);
+            {Name, Data};
         false ->
             case get_field(Data, LogEvent, Config) of
                 undefined -> [];
                 Value ->
-                    field(Name, Value)
+                    {Name, Value}
             end
     end;
 build_field(Atom, LogEvent, Config) when is_atom(Atom) ->
@@ -373,21 +373,21 @@ get_field(Metakey, #{meta := Meta}, _Config) ->
     end.
 
 normalize_msg(Prefix, {string, String}, _Meta, _Config) ->
-    field(Prefix, String);
+    {Prefix, String};
 normalize_msg(Prefix, {report, Report}, #{report_cb := Cb}, _Config)
   when is_function(Cb, 1) ->
-    field(Prefix, Cb(Report));
+    {Prefix, Cb(Report)};
 normalize_msg(Prefix, {report, Report}, #{report_cb := Cb}, _Config)
   when is_function(Cb, 2) ->
     Config = #{depth => unlimited,
                chars_limit => unlimited,
                single_line => false},
-    field(Prefix, Cb(Report, Config));
+    {Prefix, Cb(Report, Config)};
 normalize_msg(Prefix, {report, Report}, _Meta, Config) ->
     Cb = maps:get(report_cb, Config, fun ?MODULE:format_report/2),
     Cb(Prefix, Report);
 normalize_msg(Prefix, {Format, Data}, _Meta, _Config) ->
-    field(Prefix, io_lib:format(Format, Data)).
+    {Prefix, io_lib:format(Format, Data)}.
 
 get_meta([], Data) ->
     Data;
