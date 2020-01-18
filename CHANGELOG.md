@@ -1,3 +1,11 @@
+<a name="0.3.1"></a>
+### 0.3.1 (2020-01-18)
+
+
+#### Bug Fixes
+
+* **systemd_journal_formatter:**  handling of unary report_cb return value ([4a0577b4](4a0577b4))
+
 <a name="0.3.0"></a>
 ## 0.3.0 (2020-01-18)
 
@@ -21,9 +29,7 @@
   *  add formatter for journald ([30ed15d8](30ed15d8))
 * **systemd_journal_h:**  create logger handler for systemd's journal ([e760b086](e760b086))
 * **systemd_stderr_formatter:**  rename from systemd_formatter ([f92f92eb](f92f92eb))
-* **systemd_watchdog:**
-  *  add scaling to timeouts ([693f7c69](693f7c69))
-  *  use `systemd` module for notifications ([241adc30](241adc30))
+* **systemd_watchdog:** use `systemd` module for notifications ([241adc30](241adc30))
 
 <a name="0.2.0"></a>
 ## 0.2.0 (2020-01-15)
