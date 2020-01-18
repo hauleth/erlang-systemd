@@ -10,7 +10,14 @@
     stdlib
    ]},
   {mod, {systemd_app, []}},
-  {env,[{watchdog_scale, 2}]},
+  {env,[{watchdog_scale, 2},
+        {logger,
+         [{handler,
+           journal,
+           systemd_journal_h,
+           #{formatter => {systemd_journal_formatter, #{}}}
+          }]}
+       ]},
   {modules, []},
 
   {licenses, ["Apache 2.0"]},

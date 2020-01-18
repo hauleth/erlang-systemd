@@ -14,6 +14,7 @@ Simple library for notifying systemd about process state.
 - Watchdog process will be started automatically if enabled. It will also handle
   sending keep-alive messages automatically.
 - File descriptors fetching from the environment.
+- `journal` logger handler and formatters
 
 ## Installation
 
@@ -83,6 +84,53 @@ systemd:notify(reloading).
 ```
 
 Message about application shutting down will be handled automatically for you.
+
+### Logs
+
+To handle logs you have 2 possible options:
+
+- Output data to standard error with special prefixes. This approach is much
+  simpler and straightforward, however do not support structured logging and
+  multiline messages.
+- Use datagram socket with special communication protocol. This requires a
+  little bit more effort to set up, but seamlessly supports structured logging
+  and multiline messages.
+
+This library supports both formats, and it is up to You which one (or
+both?) your app will decide to use.
+
+#### Standard error
+
+There is `systemd_stderr_formatter` which can be used with any logger that
+outputs to standard error, for example `logger_std_h`. So to use this format it
+is the best to define in your `sys.config`:
+
+```erlang
+[
+  {kernel,
+   [{logger,
+     [{handler, default, logger_std_h, #{formatter => {systemd_stderr_formatter, #{}},
+                                                       type => standard_error}}]
+    }}}
+].
+```
+
+This will add required prefixes automatically for you.
+
+#### Datagram socket
+
+This one requires `systemd` application to be started to spawn some processes
+required for handling sockets, so the best way to handle it is to add predefined
+`systemd` handlers after your application starts:
+
+```erlang
+logger:add_handlers(systemd).
+```
+
+Be aware that this one is **not** guaranteed to work on non-systemd systems, so
+if You aren't sure if that application will be ran on systemd-enabled OS then
+you shouldn't use it as an only logger solution in your application or you can
+end with no logger attached at all.
 
 ## License
 
