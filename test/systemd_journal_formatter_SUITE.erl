@@ -86,8 +86,8 @@ message(_Config) ->
     <<"MSG=foo: bar\n">> = format(debug, {report, [{foo, bar}]}, Config1),
     <<"MSG=[]\n">> = format(debug, {report, []}, Config1),
 
-    ReportCb1 = fun (#{foo := Data}) -> Data end,
-    <<"MSG=foo\n">> = format(debug, {report, #{foo => "foo"}}, #{report_cb => ReportCb1}, Config1),
+    ReportCb1 = fun logger:format_report/1,
+    <<"MSG=foo: foo\n">> = format(debug, {report, #{foo => "foo"}}, #{report_cb => ReportCb1}, Config1),
     ReportCb2 = fun (#{foo := Data}, _Options) -> Data end,
     <<"MSG=foo\n">> = format(debug, {report, #{foo => "foo"}}, #{report_cb => ReportCb2}, Config1),
 

@@ -376,7 +376,9 @@ normalize_msg(Prefix, {string, String}, _Meta, _Config) ->
     {Prefix, String};
 normalize_msg(Prefix, {report, Report}, #{report_cb := Cb}, _Config)
   when is_function(Cb, 1) ->
-    {Prefix, Cb(Report)};
+    {Format0, Args} = Cb(Report),
+    Format = string:trim(Format0, leading, " "),
+    {Prefix, io_lib:format(Format, Args)};
 normalize_msg(Prefix, {report, Report}, #{report_cb := Cb}, _Config)
   when is_function(Cb, 2) ->
     Config = #{depth => unlimited,
