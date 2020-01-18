@@ -304,15 +304,16 @@ build_message([]) -> [];
 build_message([List | Rest]) when is_list(List) ->
     [build_message(List) | build_message(Rest)];
 build_message([{Name, Data} | Rest]) ->
-    Content = case string:find(Data, "\n") of
-                  nomatch -> [$=, Data];
-                  _ ->
-                      Len = iolist_size(Data),
-                      [$\n, <<Len:64/integer-little>>, Data]
-              end,
-    case string:is_empty(Content) of
+    case string:is_empty(Data) of
         true -> build_message(Rest);
-        false -> [Name, Content, $\n | build_message(Rest)]
+        false ->
+            Content = case string:find(Data, "\n") of
+                          nomatch -> [$=, Data];
+                          _ ->
+                              Len = iolist_size(Data),
+                              [$\n, <<Len:64/integer-little>>, Data]
+                      end,
+            [Name, Content, $\n | build_message(Rest)]
     end.
 
 build_field({Prefix, msg}, #{msg := Msg, meta := Meta}, Config) ->
