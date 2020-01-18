@@ -74,7 +74,7 @@ message(_Config) ->
     <<"MESSAGE=foo\n">> = format(debug, {report, [foo]}, Config0),
     <<"MESSAGE=foo\n">> = format(debug, {report, foo}, Config0),
 
-    <<"MESSAGE=\n", 7:64/integer-little, "foo\nbar\n">> = format(debug, {string, "foo\nbar"}, Config0),
+    <<"MESSAGE\n", 7:64/integer-little, "foo\nbar\n">> = format(debug, {string, "foo\nbar"}, Config0),
 
     Config1 = #{fields => [msg]},
     <<>> = format(debug, {string, ""}, Config1),
