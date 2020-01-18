@@ -1,3 +1,11 @@
+<a name="0.3.3"></a>
+### 0.3.3 (2020-01-18)
+
+
+#### Bug Fixes
+
+* **systemd_journal_formatter:** again invalid format of multiline messages ([b8f213af](b8f213af))
+
 <a name="0.3.2"></a>
 ### 0.3.2 (2020-01-18)
 
