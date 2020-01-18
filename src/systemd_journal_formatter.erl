@@ -308,7 +308,7 @@ build_message([{Name, Data} | Rest]) ->
                   nomatch -> Data;
                   _ ->
                       Len = iolist_size(Data),
-                      [$\n, <<Len:64/integer-little>>, $\n, Data]
+                      [$\n, <<Len:64/integer-little>>, Data]
               end,
     case string:is_empty(Content) of
         true -> build_message(Rest);
