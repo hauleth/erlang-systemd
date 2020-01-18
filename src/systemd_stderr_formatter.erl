@@ -21,7 +21,7 @@
 %%      <dt>`parent'</dt>
 %%      <dd>"Parent" formatter that will be used as a "main" formatter.
 %%
-%%      Defaults to `logger_formatter'.
+%%      Defaults to `logger_formatter'.</dd>
 %% </dl>
 %%
 %% Rest of the options will be passed to `parent' with this option removed.
