@@ -51,6 +51,7 @@
 -export([check_config/1,
          format/2]).
 
+%% @hidden
 -spec check_config(logger:formatter_config()) -> ok | {error, term()}.
 check_config(Config0) ->
     case maps:take(parent, Config0) of
@@ -63,6 +64,7 @@ check_config(Config0) ->
             logger_formatter:check_config(Config0)
     end.
 
+%% @hidden
 -spec format(logger:log_event(), logger:formatter_config()) ->
     unicode:chardata().
 format(#{level := Level}=LogEvent, Config0) ->
@@ -70,8 +72,10 @@ format(#{level := Level}=LogEvent, Config0) ->
                               {FMod, Conf} -> {FMod, Conf};
                               error -> {logger_formatter, Config0}
                           end,
-    Message = Formatter:format(LogEvent, Config),
-    [format_level(Level), Message].
+    Priority = format_level(Level),
+    Message0 = Formatter:format(LogEvent, Config),
+    Message = string:replace(Message0, "\n", [$\n, Priority], all),
+    [Priority | Message].
 
 format_level(emergency) -> ?SD_EMERG;
 format_level(alert)     -> ?SD_ALERT;
