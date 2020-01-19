@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: erlang:22.0.7
+      image: erlang:22.2
     steps:
     - uses: actions/checkout@v1
     - name: Compile
@@ -20,3 +20,11 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./_build/test/covertool/systemd.covertool.xml
+  docs:
+    runs-on: ubuntu-latest
+    container:
+      image: erlang:22.2
+    steps:
+    - uses: actions/checkout@v1
+    - name: Check if docs build
+      run rebar3 edoc
