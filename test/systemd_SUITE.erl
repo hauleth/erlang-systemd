@@ -188,7 +188,7 @@ watchdog(Config) ->
     ok = systemd:watchdog(trigger),
     ct:sleep(10),
     Messages12 = mock_systemd:messages(Pid),
-    ?assertMatch(["WATCHDOG=trigger\n"], Messages12),
+    ?assertMatch(["WATCHDOG=trigger\n", "WATCHDOG=1\n"], Messages12),
 
     ok = stop(Config),
 
