@@ -27,4 +27,4 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Check if docs build
-      run rebar3 edoc
+      run: rebar3 edoc
