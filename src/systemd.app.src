@@ -13,7 +13,7 @@
   {env,[{watchdog_scale, 2},
         {logger,
          [{handler,
-           journal,
+           systemd_journal,
            systemd_journal_h,
            #{formatter => {systemd_journal_formatter, #{}}}
           }]}
