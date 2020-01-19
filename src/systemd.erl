@@ -17,6 +17,8 @@
 %%
 %% @doc
 %% Functions for interacting with `systemd' features.
+%%
+%% @since 0.1.0
 %% @end
 -module(systemd).
 
