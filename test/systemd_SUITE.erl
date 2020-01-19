@@ -27,6 +27,10 @@ end_per_testcase(Name, Config0) ->
     _ = application:stop(systemd),
     ok = gen_server:stop(?config(mock_pid, Config)),
 
+    systemd:unset_env(notify),
+    systemd:unset_env(watchdog),
+    systemd:unset_env(listen_fds),
+
     Config.
 
 notify(init, Config) ->
@@ -119,6 +123,18 @@ watchdog(Config) ->
     ok = stop(Config),
 
     % -------------------------------------------------------------------------
+    ct:log("Enabling invalid Watchdog does nothing"),
+    os:putenv("WATCHDOG_USEC", "0"),
+    ok = start_with_socket(Socket),
+    ct:sleep(10),
+
+    ?assertEqual([], mock_systemd:messages(Pid)),
+    systemd:watchdog(enable),
+    ct:sleep(10),
+    ?assertEqual([], mock_systemd:messages(Pid)),
+    ok = stop(Config),
+
+    % -------------------------------------------------------------------------
     ct:log("Watchdog do not send messages when WATCHDOG_USEC is zero"),
     os:putenv("WATCHDOG_USEC", "0"),
     ok = start_with_socket(Socket),
@@ -206,6 +222,28 @@ watchdog(Config) ->
 
     ok = stop(Config),
 
+    % -------------------------------------------------------------------------
+    ct:log("By default unsets variables"),
+    os:putenv("WATCHDOG_PID", os:getpid()),
+    os:putenv("WATCHDOG_USEC", TimeoutList),
+    ok = start_with_socket(Socket),
+    false = os:getenv("WATCHDOG_PID"),
+    false = os:getenv("WATCHDOG_USEC"),
+
+    ok = stop(Config),
+
+    % -------------------------------------------------------------------------
+    ct:log("Do not unset env when unset_env is false"),
+    os:putenv("WATCHDOG_PID", os:getpid()),
+    os:putenv("WATCHDOG_USEC", TimeoutList),
+    ok = application:set_env(systemd, unset_env, false),
+    ok = start_with_socket(Socket),
+    ?assertEqual(os:getpid(), os:getenv("WATCHDOG_PID")),
+    TimeoutList = os:getenv("WATCHDOG_USEC"),
+    ok = application:set_env(systemd, unset_env, true),
+
+    ok = stop(Config),
+
     ok.
 
 listen_fds(init, Config) -> Config;
@@ -218,81 +256,95 @@ listen_fds(finish, Config) ->
 listen_fds(_Config) ->
     % -------------------------------------------------------------------------
     ct:log("When no environment variables it returns empty list"),
-    ?assertEqual([], systemd:listen_fds(true)),
+    ?assertEqual([], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When no LISTEN_PID environment variable is set it returns empty list"),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "3"),
-    ?assertEqual([], systemd:listen_fds(true)),
+    ?assertEqual([], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When LISTEN_PID mismatch it returns empty list"),
     os:putenv("LISTEN_PID", "foo"),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar:baz"),
-    ?assertEqual([], systemd:listen_fds(true)),
+    ?assertEqual([], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When LISTEN_PID match returned list has LISTEN_FDS amount of entries"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
-    ?assertEqual(3, length(systemd:listen_fds(true))),
+    ?assertEqual(3, length(systemd:listen_fds())),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When LISTEN_FDS is not set, it is assumed to be 0"),
     os:putenv("LISTEN_PID", os:getpid()),
-    ?assertEqual([], systemd:listen_fds(true)),
+    ?assertEqual([], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When LISTEN_FDS is not integer, it is assumed to be 0"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "foo"),
-    ?assertEqual([], systemd:listen_fds(true)),
+    ?assertEqual([], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "1.0"),
-    ?assertEqual([], systemd:listen_fds(true)),
+    ?assertEqual([], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("Returned list has PIDs with respective names"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar:baz"),
-    ?assertMatch([{_, "foo"}, {_, "bar"}, {_, "baz"}], systemd:listen_fds(true)),
+    ?assertMatch([{_, "foo"}, {_, "bar"}, {_, "baz"}], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
-    ct:log("When false passed next call returns the same data"),
+    ct:log("When subsequent calls will return the same data"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar:baz"),
     First = systemd:listen_fds(),
-    First = systemd:listen_fds(false),
-    First = systemd:listen_fds(true),
+    First = systemd:listen_fds(),
+    systemd:unset_env(listen_fds),
+    [] = systemd:listen_fds(),
+    [] = systemd:listen_fds(),
 
     % -------------------------------------------------------------------------
     ct:log("When name is empty it returns raw FD"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo::baz"),
-    ?assertMatch([{_, "foo"}, _, {_, "baz"}], systemd:listen_fds(true)),
+    ?assertMatch([{_, "foo"}, _, {_, "baz"}], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When names list is shorter it returns raw FDs"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar"),
-    ?assertMatch([{_, "foo"}, {_, "bar"}, _], systemd:listen_fds(true)),
+    ?assertMatch([{_, "foo"}, {_, "bar"}, _], systemd:listen_fds()),
+    systemd:unset_env(listen_fds),
 
     ok.
 
 socket(Config) ->
     Pid = ?config(mock_pid, Config),
+    Socket = ?config(socket, Config),
 
     % -------------------------------------------------------------------------
     ct:log("When started without NOTIFY_SOCKET it is noop"),
     {ok, _} = application:ensure_all_started(systemd),
     ok = systemd:notify(ready),
+    ct:sleep(10),
     ?assertEqual([], mock_systemd:messages(Pid)),
     ok = stop(Config),
 
@@ -300,6 +352,7 @@ socket(Config) ->
     ct:log("When started with invalid NOTIFY_SOCKET it is noop"),
     ok = start_with_socket("/non/existent"),
     ok = systemd:notify(ready),
+    ct:sleep(10),
     ?assertEqual([], mock_systemd:messages(Pid)),
     ok = stop(Config),
 
@@ -307,8 +360,29 @@ socket(Config) ->
     ct:log("When started with empty NOTIFY_SOCKET it is noop"),
     ok = start_with_socket(""),
     ok = systemd:notify(ready),
+    ct:sleep(10),
     ?assertEqual([], mock_systemd:messages(Pid)),
     ok = stop(Config),
+
+    % -------------------------------------------------------------------------
+    ct:log("By default unset NOTIFY_SOCKET"),
+    ok = start_with_socket(Socket),
+    ok = systemd:notify(ready),
+    ct:sleep(10),
+    ?assertEqual(["READY=1\n"], mock_systemd:messages(Pid)),
+    false = os:getenv("NOTIFY_SOCKET"),
+    ok = stop(Config),
+
+    % -------------------------------------------------------------------------
+    ct:log("Do not unset NOTIFY_SOCKET when unset_env is false"),
+    ok = application:set_env(systemd, unset_env, false),
+    ok = start_with_socket(Socket),
+    ok = systemd:notify(ready),
+    ct:sleep(10),
+    ?assertEqual(["READY=1\n"], mock_systemd:messages(Pid)),
+    Socket = os:getenv("NOTIFY_SOCKET"),
+    ok = stop(Config),
+    ok = application:set_env(systemd, unset_env, true),
 
     ok.
 

@@ -67,7 +67,8 @@
 % Logger Handler
 
 %% @hidden
--spec adding_handler(logger:handler_config()) -> logger:handler_config().
+-spec adding_handler(logger:handler_config()) -> {ok, logger:handler_config()} |
+                                                 {error, term()}.
 adding_handler(HConfig) ->
     Config = maps:get(config, HConfig, #{}),
     Path = maps:get(path, Config, ?JOURNAL_SOCKET),
