@@ -29,9 +29,48 @@
          booted/0]).
 
 %% @doc
-%% Send notification to the systemd socket.
+%% Send notification to the `systemd' socket.
 %%
-%% @param `State'
+%% == Arguments ==
+%%
+%% <dl>
+%%      <dt>`notify(ready)'</dt>
+%%      <dd>Notify that application is ready for work. If used with
+%%      `Type=notify' in `systemd.service(5)' file then it will block
+%%      `systemctl start' until this is called.</dd>
+%%      <dt>`notify(stopping)'</dt>
+%%      <dd>Notify that application has already started shutting down, but is
+%%      not yet ready to stop. For example when you want to do connection
+%%      draining or you have to do some cleaning before fully stopping.
+%%
+%%      This will be automatically set for you in `systemd''s application
+%%      `prep_stop/1' step, so user do not need to call it manually.</dd>
+%%      <dt>`notify(reloading)'</dt>
+%%      <dd>Notify that application is reloading. It is left up to user what
+%%      is considered reloading and handle this call manually.</dd>
+%%      <dt>`notify(watchdog)'</dt>
+%%      <dd>Equivalent of `watchdog(ping)'.
+%%
+%%      See {@link watchdog/1. `watchdog/1'}.</dd>
+%%      <dt>`notify(watchdog_trigger)'</dt>
+%%      <dd>Equivalent of `watchdog(trigger)'.
+%%
+%%      See {@link watchdog/1. `watchdog/1'}.</dd>
+%%      <dt>`notify({errno, Errno :: integer()})'</dt>
+%%      <dd>Notify that application encountered `Errno' in C's `errno'
+%%      format.
+%%
+%%      Implemented only for feature parity.</dd>
+%%      <dt>`notify({buserror, Error :: unicode:chardata()})'</dt>
+%%      <dd>Notify about DBus error.</dd>
+%%      <dt>`notify({extend_timeout, {Time :: integer(), Unit :: erlang:time_unit()}})'</dt>
+%%      <dd>Request extension of timeout for sending `notify(ready)'. This is
+%%      useful in case of setups that are taking more time than originally
+%%      expected, for example because of retries in connecting to external
+%%      service.
+%%
+%%      This message must be sent within original timeout.</dd>
+%% </dl>
 %% @end
 -spec notify(State :: state()) -> ok.
 notify(State) ->
@@ -59,12 +98,47 @@ normalize_state({buserror, Error}) -> ["BUSERROR=", Error];
 normalize_state({extend_timeout, {Time, Unit}}) ->
     Microsecs = erlang:convert_time_unit(Time, Unit, microsecond),
     io_lib:fwrite("EXTEND_TIMEOUT_USEC=~B", [Microsecs]);
-normalize_state(Msg) -> Msg.
+normalize_state(Msg)
+  when is_list(Msg); is_binary(Msg) ->
+    Msg.
 
 %% ----------------------------------------------------------------------------
 
 %% @doc
 %% Manage watchdog process.
+%%
+%% By default `systemd' will handle Watchdog process automatically for you.
+%%
+%% == Arguments ==
+%%
+%% <dl>
+%%      <dt>`watchdog(state) -> sd_timeout()'</dt>
+%%      <dd>Returns state of the Watchdog process. Which either be integer
+%%      representing timeout in microseconds or `false' if Watchdog process is
+%%      disabled.</dd>
+%%      <dt>`watchdog(trigger) -> ok'</dt>
+%%      <dd>Trigger Watchdog timeout right despite current state.</dd>
+%%      <dt>`watchdog(enable) -> ok'</dt>
+%%      <dd>Enable Watchdog process. Watchdog process is automatically enabled
+%%      when needed after startup, so this will be only needed if user manually
+%%      called `watchdog(disable)'.</dd>
+%%      <dt>`watchdog(disable) -> ok'</dt>
+%%      <dd>Disable Watchdog process. This will cause no keep-alive messages to
+%%      be sent.</dd>
+%%      <dt>`watchdog(trigger) -> ok'</dt>
+%%      <dd>Manually send keep-alive message to the Watchdog. It will not reset
+%%      timer and will not disturb regular process pinging.</dd>
+%% </dl>
+%%
+%% == Options ==
+%%
+%% <dl>
+%%      <dt>`watchdog_scale'</dt>
+%%      <dd>Divider of the timeout to send messages more often than this is
+%%      required to prevent any jitter.
+%%
+%%      Defaults to `2' which will send messages twice as often as needed.</dd>
+%% </dl>
 %% @end
 -spec watchdog(state) -> sd_timeout()
                          ; (trigger) -> ok
@@ -170,7 +244,7 @@ generate_fds(_, 0, _, Agg) -> lists:reverse(Agg);
 generate_fds(Fd, Count, [Name | Names], Agg) ->
     generate_fds(Fd + 1, Count - 1, Names, [fd(Fd, Name) | Agg]);
 generate_fds(Fd, Count, [], Agg) ->
-    generate_fds(Fd + 1, Count - 1, [], [fd(Fd, "") | Agg]).
+    generate_fds(Fd + 1, Count - 1, [], [Fd | Agg]).
 
 fd(Fd, "") -> Fd;
 fd(Fd, Name) -> {Fd, Name}.

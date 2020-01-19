@@ -18,6 +18,9 @@
 start_link(Timeout) ->
     gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Timeout, []).
 
+init(-1) ->
+    State = #state{timeout=-1, enabled=false},
+    {ok, State};
 init(Timeout) ->
     State = #state{timeout=Timeout},
     notify(State),
@@ -25,11 +28,14 @@ init(Timeout) ->
 
 handle_call(trigger, _Ref, State) ->
     systemd:notify(watchdog_trigger),
-    {reply, ok, State#state{enabled=false}};
-handle_call(enable, _Ref, State) ->
+    {reply, ok, State};
+handle_call(enable, _Ref, #state{timeout=T}=State)
+  when T > 0 ->
     NewState = State#state{enabled=true},
     notify(NewState),
     {reply, ok, NewState};
+handle_call(enable, _Ref, State) ->
+    {reply, ok, State};
 handle_call(disable, _Ref, State) ->
     {reply, ok, State#state{enabled=false}};
 handle_call(state, _Ref, State) ->

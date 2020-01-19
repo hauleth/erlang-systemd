@@ -25,15 +25,19 @@
 %%       See {@section Fields} below.</dd>
 %%
 %%       <dt>`report_cb :: fun ((Prefix :: field_name(), logger:report()) -> [field()]'</dt>
-%%       <dd>Function that takes `Prefix' and Logger's report and returns list of
-%%       values returned by {@link field/2. `systemd_journal_formatter:field/2'}.
+%%       <dd>Function that takes `Prefix' and Logger's report and returns list
+%%       of 2-ary tuples  where first one MUST contain only uppercase ASCII
+%%       letters, digits and underscore characters, and must not start with
+%%       underscore. Field name and second one is field value in form of `iolist()'.
+%%       It is important to note that value can contain any data, and do not
+%%       need to be in any encodig, it can even be binary.
 %%
 %%       === Example ===
 %%
 %%       ```
 %%       my_formatter(Prefix, #{field := Field}) when is_integer(Field) ->
 %%           [
-%%            systemd_journal_formatter:field([Prefix,"_FIELD"], io_lib:format("~.16B", [Field])
+%%            {[Prefix,"_FIELD"], io_lib:format("~.16B", [Field]}
 %%           ].
 %%       '''
 %%
