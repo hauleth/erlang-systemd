@@ -14,7 +14,10 @@
 %% KIND, either express or implied.  See the License for the
 %% specific language governing permissions and limitations
 %% under the License.
-
+%%
+%% @doc
+%% Functions for interacting with `systemd' features.
+%% @end
 -module(systemd).
 
 -type state() ::
@@ -48,6 +51,9 @@
 %% @doc
 %% Unset environment variables for given subsystem.
 %%
+%% Most environment variables will be cleaned on startup by default. To prevent
+%% such behaviour set `unset_env' application variable to `false'.
+%%
 %% <dl>
 %%      <dt>`unset_env(notify)'</dt>
 %%      <dd>Unset variables used by {@link notify/1. `notify/1'}. This call will
@@ -65,6 +71,8 @@
 %%      highly encouraged to unset these variables to prevent them from being
 %%      passed to the subprocesses.</dd>
 %% </dl>
+%%
+%% @since 0.4.0
 %% @end
 -spec unset_env(Subsystem) -> ok
                                 when Subsystem ::
@@ -129,6 +137,8 @@ unset_env(listen_fds) ->
 %%
 %%      This message must be sent within original timeout.</dd>
 %% </dl>
+%%
+%% @since 0.1.0
 %% @end
 -spec notify(State :: state()) -> ok.
 notify(State) ->
@@ -139,6 +149,8 @@ notify(State) ->
 %%
 %% This function takes `Format' and `Data' that will be formatted in the same
 %% way as `io:fwrite/2'.
+%%
+%% @since 0.1.0
 %% @end
 -spec notify(Format :: io:format(), Data :: [term()]) -> ok.
 notify(Format, Data) ->
@@ -197,6 +209,8 @@ normalize_state(Msg)
 %%
 %%      Defaults to `2' which will send messages twice as often as needed.</dd>
 %% </dl>
+%%
+%% @since 0.1.0
 %% @end
 -spec watchdog(state) -> sd_timeout()
                          ; (trigger) -> ok
@@ -227,6 +241,8 @@ watchdog(ping) ->
 %%
 %% @returns `{ok, true}' if system was booted with systemd, `{ok,false}' if not,
 %% and `{error, Reason}' on error.
+%%
+%% @since 0.1.0
 %% @end
 -spec booted() -> {ok, boolean()} | {error, file:posix()}.
 booted() ->
@@ -244,6 +260,8 @@ booted() ->
 %% @returns List of passed file descriptors. If descriptor have name defined
 %% then it will be returned as 2nd value in tuple. Order of returned descriptors
 %% is the same as passed in environment.
+%%
+%% @since 0.2.0
 %% @end
 -spec listen_fds() -> [fd()].
 listen_fds() ->
