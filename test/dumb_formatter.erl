@@ -4,5 +4,5 @@
 
 -spec format(logger:log_event(), logger:formatter_config()) ->
     unicode:chardata().
-format(LogEvent, _Config) ->
-    logger_formatter:format(LogEvent, #{template => [msg]}).
+format(LogEvent, Config) ->
+    logger_formatter:format(LogEvent, Config#{template => [msg]}).
