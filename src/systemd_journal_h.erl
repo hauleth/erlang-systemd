@@ -36,6 +36,8 @@
 %% This logger <b>should</b> always be used with `systemd_journal_formatter' unless
 %% you are completely sure what you are trying to do. Otherwise you can loose your
 %% log data.
+%%
+%% @since 0.3.0
 %% @end
 -module(systemd_journal_h).
 
@@ -67,7 +69,8 @@
 % Logger Handler
 
 %% @hidden
--spec adding_handler(logger:handler_config()) -> logger:handler_config().
+-spec adding_handler(logger:handler_config()) -> {ok, logger:handler_config()} |
+                                                 {error, term()}.
 adding_handler(HConfig) ->
     Config = maps:get(config, HConfig, #{}),
     Path = maps:get(path, Config, ?JOURNAL_SOCKET),

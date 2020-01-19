@@ -16,5 +16,14 @@
 %% under the License.
 %%
 -define(SUPERVISOR, systemd_sup).
+
 -define(WATCHDOG, systemd_watchdog).
+-define(WATCHDOG_PID, "WATCHDOG_PID").
+-define(WATCHDOG_TIMEOUT, "WATCHDOG_USEC").
+
+-define(NOTIFY_SOCKET, "NOTIFY_SOCKET").
+
 -define(LISTEN_FDS_START, 3).
+-define(LISTEN_PID, "LISTEN_PID").
+-define(LISTEN_FDS, "LISTEN_FDS").
+-define(LISTEN_FDNAMES, "LISTEN_FDNAMES").

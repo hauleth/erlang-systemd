@@ -185,6 +185,8 @@
 %% will be similar to one provided by `logger:format_report/1', but this one
 %% takes also additional parameter `Perfix' which should be used as prefix for
 %% all generated fields.
+%%
+%% @since 0.3.0
 %% @end
 -spec format_report(Prefix :: field_name(), logger:report()) -> [field()].
 format_report(Prefix, Report) ->

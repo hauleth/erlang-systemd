@@ -14,7 +14,12 @@
 %% KIND, either express or implied.  See the License for the
 %% specific language governing permissions and limitations
 %% under the License.
-
+%%
+%% @doc
+%% Functions for interacting with `systemd' features.
+%%
+%% @since 0.1.0
+%% @end
 -module(systemd).
 
 -type state() ::
@@ -38,12 +43,58 @@
 -include_lib("kernel/include/file.hrl").
 -include("systemd_internal.hrl").
 
--export([notify/1,
+-export([unset_env/1,
+         notify/1,
          notify/2,
          watchdog/1,
          listen_fds/0,
-         listen_fds/1,
          booted/0]).
+
+%% @doc
+%% Unset environment variables for given subsystem.
+%%
+%% Most environment variables will be cleaned on startup by default. To prevent
+%% such behaviour set `unset_env' application variable to `false'.
+%%
+%% <dl>
+%%      <dt>`unset_env(notify)'</dt>
+%%      <dd>Unset variables used by {@link notify/1. `notify/1'}. This call will
+%%      be done automatically when the `unset_env' application option is set
+%%      (default). It is highly encouraged to unset these variables to prevent
+%%      them from being passed to subprocesses.</dd>
+%%      <dt>`unset_env(watchdog)'</dt>
+%%      <dd>Unset variables used by {@link watchdog/1. `watchdog/1'}. This call will
+%%      be done automatically when the `unset_env' application option is set
+%%      (default). It is highly encouraged to unset these variables to prevent
+%%      them from being passed to subprocesses.</dd>
+%%      <dt>`unset_env(listen_fds)'</dt>
+%%      <dd>Unset variables used by {@link listen_fds/0. `listen_fds/0'}. After
+%%      that all subsequent calls to `listen_fds' will return empty list. It is
+%%      highly encouraged to unset these variables to prevent them from being
+%%      passed to the subprocesses.</dd>
+%% </dl>
+%%
+%% @since 0.4.0
+%% @end
+-spec unset_env(Subsystem) -> ok
+                                when Subsystem ::
+                                     notify |
+                                     watchdog |
+                                     listen_fds.
+unset_env(notify) ->
+    os:unsetenv(?NOTIFY_SOCKET),
+    ok;
+unset_env(watchdog) ->
+    os:unsetenv(?WATCHDOG_PID),
+    os:unsetenv(?WATCHDOG_TIMEOUT),
+    ok;
+unset_env(listen_fds) ->
+    os:unsetenv(?LISTEN_PID),
+    os:unsetenv(?LISTEN_FDS),
+    os:unsetenv(?LISTEN_FDNAMES),
+    ok.
+
+%% ----------------------------------------------------------------------------
 
 %% @doc
 %% Send notification to the `systemd' socket.
@@ -88,6 +139,8 @@
 %%
 %%      This message must be sent within original timeout.</dd>
 %% </dl>
+%%
+%% @since 0.1.0
 %% @end
 -spec notify(State :: state()) -> ok.
 notify(State) ->
@@ -98,6 +151,8 @@ notify(State) ->
 %%
 %% This function takes `Format' and `Data' that will be formatted in the same
 %% way as `io:fwrite/2'.
+%%
+%% @since 0.1.0
 %% @end
 -spec notify(Format :: io:format(), Data :: [term()]) -> ok.
 notify(Format, Data) ->
@@ -156,6 +211,8 @@ normalize_state(Msg)
 %%
 %%      Defaults to `2' which will send messages twice as often as needed.</dd>
 %% </dl>
+%%
+%% @since 0.1.0
 %% @end
 -spec watchdog(state) -> sd_timeout()
                          ; (trigger) -> ok
@@ -186,6 +243,8 @@ watchdog(ping) ->
 %%
 %% @returns `{ok, true}' if system was booted with systemd, `{ok,false}' if not,
 %% and `{error, Reason}' on error.
+%%
+%% @since 0.1.0
 %% @end
 -spec booted() -> {ok, boolean()} | {error, file:posix()}.
 booted() ->
@@ -197,43 +256,25 @@ booted() ->
 
 %% ----------------------------------------------------------------------------
 
--define(LISTEN_PID, "LISTEN_PID").
--define(LISTEN_FDS, "LISTEN_FDS").
--define(LISTEN_FDNAMES, "LISTEN_FDNAMES").
-
-%% @equiv listen_fds(false)
--spec listen_fds() -> [fd()].
-listen_fds() ->
-    listen_fds(false).
-
 %% @doc
 %% Returns list of file descriptors passed to the application by systemd.
-%%
-%% @param `Unset' if true then will unset all environment variables and all
-%% consecutive calls will return empty list.
 %%
 %% @returns List of passed file descriptors. If descriptor have name defined
 %% then it will be returned as 2nd value in tuple. Order of returned descriptors
 %% is the same as passed in environment.
+%%
+%% @since 0.2.0
 %% @end
--spec listen_fds(Unset :: boolean()) -> [fd()].
-listen_fds(Unset) ->
-    Fds = case check_listen_pid() of
-              true ->
-                  Count = listen_fds_count(),
-                  Names = listen_names(),
-                  generate_fds(Count, Names);
-              false ->
-                  []
-          end,
-    unsetenv_all(Unset),
-    Fds.
-
-unsetenv_all(false) -> true;
-unsetenv_all(true) ->
-    os:unsetenv(?LISTEN_PID),
-    os:unsetenv(?LISTEN_FDS),
-    os:unsetenv(?LISTEN_FDNAMES).
+-spec listen_fds() -> [fd()].
+listen_fds() ->
+    case check_listen_pid() of
+        true ->
+            Count = listen_fds_count(),
+            Names = listen_names(),
+            generate_fds(Count, Names);
+        false ->
+            []
+    end.
 
 check_listen_pid() ->
     os:getenv(?LISTEN_PID) == os:getpid().

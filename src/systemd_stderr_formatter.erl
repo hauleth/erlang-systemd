@@ -43,6 +43,7 @@
 %%
 %% Rest of the options will be passed to `parent' with this option removed.
 %%
+%% @since 0.3.0
 %% @end
 -module(systemd_stderr_formatter).
 

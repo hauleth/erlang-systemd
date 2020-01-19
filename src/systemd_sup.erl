@@ -25,10 +25,6 @@
 
 -export([start_link/1, init/1]).
 
--define(PID, "WATCHDOG_PID").
--define(TIMEOUT, "WATCHDOG_USEC").
--define(NOTIFY_SOCKET, "NOTIFY_SOCKET").
-
 -include_lib("kernel/include/file.hrl").
 
 start_link(Opts) ->
@@ -42,7 +38,7 @@ init(_Opts) ->
 
     SocketServer = #{id => socket,
                      start => {systemd_socket, start_link, [notify_socket()]}},
-    Timeout = case {watchdog_pid(), watchdog_timeout()} of
+    Timeout = case watchdog() of
                    {Pid, TimeoutUS} when TimeoutUS > 0 ->
                        erlang:convert_time_unit(TimeoutUS, microsecond, millisecond);
                    _ -> infinity
@@ -52,25 +48,21 @@ init(_Opts) ->
 
     {ok, {SupFlags, [SocketServer, Watchdog]}}.
 
-watchdog_pid() ->
-    Return = case os:getenv(?PID) of
+watchdog() ->
+    Pid = case os:getenv(?WATCHDOG_PID) of
                  false -> os:getpid();
-                 Env -> Env
+                 EnvPid -> EnvPid
              end,
-    os:unsetenv(?PID),
-    Return.
-
-watchdog_timeout() ->
-    Return = case os:getenv(?TIMEOUT) of
-                 false -> -1;
-                 Env ->
-                     case string:to_integer(Env) of
-                         {Timeout, ""} -> Timeout;
-                         _ -> -1
-                     end
-             end,
-    os:unsetenv(?TIMEOUT),
-    Return.
+    Time = case os:getenv(?WATCHDOG_TIMEOUT) of
+               false -> -1;
+               EnvTime ->
+                   case string:to_integer(EnvTime) of
+                       {Timeout, ""} -> Timeout;
+                       _ -> -1
+                   end
+           end,
+    unset(watchdog),
+    {Pid, Time}.
 
 notify_socket() ->
     State = case os:getenv(?NOTIFY_SOCKET) of
@@ -87,5 +79,12 @@ notify_socket() ->
                             {local, Path}
                     end
             end,
-    os:unsetenv(?NOTIFY_SOCKET),
+    unset(notify),
     State.
+
+unset(System) ->
+    {ok, Unset} = application:get_env(systemd, unset_env),
+    unset(System, Unset).
+
+unset(System, true) -> systemd:unset_env(System);
+unset(_System, _) -> ok.

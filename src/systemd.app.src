@@ -10,7 +10,8 @@
     stdlib
    ]},
   {mod, {systemd_app, []}},
-  {env,[{watchdog_scale, 2},
+  {env,[{unset_env, true},
+        {watchdog_scale, 2},
         {logger,
          [{handler,
            systemd_journal,
