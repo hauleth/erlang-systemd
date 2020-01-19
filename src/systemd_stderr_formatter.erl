@@ -34,6 +34,7 @@
 -export([check_config/1,
          format/2]).
 
+%% @hidden
 -spec check_config(logger:formatter_config()) -> ok | {error, term()}.
 check_config(Config0) ->
     case maps:take(parent, Config0) of
@@ -46,6 +47,7 @@ check_config(Config0) ->
             logger_formatter:check_config(Config0)
     end.
 
+%% @hidden
 -spec format(logger:log_event(), logger:formatter_config()) ->
     unicode:chardata().
 format(#{level := Level}=LogEvent, Config0) ->
