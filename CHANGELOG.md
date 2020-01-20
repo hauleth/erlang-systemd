@@ -1,3 +1,14 @@
+<a name="0.4.0"></a>
+## 0.4.0 (2020-01-20)
+
+#### Bug Fixes
+
+* **systemd_stderr_formatter:**  prefix all lines instead of only first one ([1ccd5002](1ccd5002))
+
+#### Features
+
+* **BREAKING CHANGE!** add `systemd:unset_env/1` for unsetting variables ([f61b2fe](f61b2fe))
+
 <a name="0.3.3"></a>
 ### 0.3.3 (2020-01-18)
 
