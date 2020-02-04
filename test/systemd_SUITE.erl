@@ -85,15 +85,17 @@ watchdog(Config) ->
     Pid = ?config(mock_pid, Config),
     Socket = ?config(socket, Config),
 
-    Timeout = erlang:convert_time_unit(200,
-                                       millisecond,
-                                       microsecond),
-    TimeoutList = integer_to_list(Timeout),
+    Timeout = 200,
+    Timeout0 = erlang:convert_time_unit(Timeout,
+                                        millisecond,
+                                        microsecond),
+    TimeoutList = integer_to_list(Timeout0),
 
     % -------------------------------------------------------------------------
     ct:log("Watchdog sends messages when WATCHDOG_USEC is set"),
     os:putenv("WATCHDOG_USEC", TimeoutList),
     ok = start_with_socket(Socket),
+    ?assertEqual(Timeout, systemd:watchdog(state)),
     ct:sleep(300),
 
     Messages0 = mock_systemd:messages(Pid),
@@ -105,6 +107,7 @@ watchdog(Config) ->
     os:putenv("WATCHDOG_PID", "foo"),
     os:putenv("WATCHDOG_USEC", TimeoutList),
     ok = start_with_socket(Socket),
+    false = systemd:watchdog(state),
     ct:sleep(300),
 
     Messages1 = mock_systemd:messages(Pid),
@@ -116,6 +119,7 @@ watchdog(Config) ->
     os:putenv("WATCHDOG_PID", os:getpid()),
     os:putenv("WATCHDOG_USEC", TimeoutList),
     ok = start_with_socket(Socket),
+    Timeout = systemd:watchdog(state),
     ct:sleep(300),
 
     Messages2 = mock_systemd:messages(Pid),
@@ -126,10 +130,12 @@ watchdog(Config) ->
     ct:log("Enabling invalid Watchdog does nothing"),
     os:putenv("WATCHDOG_USEC", "0"),
     ok = start_with_socket(Socket),
+    false = systemd:watchdog(state),
     ct:sleep(10),
 
     ?assertEqual([], mock_systemd:messages(Pid)),
     systemd:watchdog(enable),
+    false = systemd:watchdog(state),
     ct:sleep(10),
     ?assertEqual([], mock_systemd:messages(Pid)),
     ok = stop(Config),
@@ -138,6 +144,7 @@ watchdog(Config) ->
     ct:log("Watchdog do not send messages when WATCHDOG_USEC is zero"),
     os:putenv("WATCHDOG_USEC", "0"),
     ok = start_with_socket(Socket),
+    false = systemd:watchdog(state),
     ct:sleep(300),
 
     Messages3 = mock_systemd:messages(Pid),
@@ -148,6 +155,7 @@ watchdog(Config) ->
     ct:log("Watchdog do not send messages when WATCHDOG_USEC is non integer"),
     os:putenv("WATCHDOG_USEC", "foo"),
     ok = start_with_socket(Socket),
+    false = systemd:watchdog(state),
     ct:sleep(300),
 
     Messages4 = mock_systemd:messages(Pid),
@@ -156,6 +164,7 @@ watchdog(Config) ->
 
     os:putenv("WATCHDOG_USEC", "1.0"),
     ok = start_with_socket(Socket),
+    false = systemd:watchdog(state),
     ct:sleep(300),
 
     Messages5 = mock_systemd:messages(Pid),
@@ -171,7 +180,7 @@ watchdog(Config) ->
     ?assertMatch(["WATCHDOG=1\n"], Messages6),
 
     ct:log("-> state enabled"),
-    ?assertEqual(200, systemd:watchdog(state)),
+    ?assertEqual(Timeout, systemd:watchdog(state)),
     ct:sleep(300),
     Messages7 = mock_systemd:messages(Pid),
     ?assertEqual(["WATCHDOG=1\n", "WATCHDOG=1\n", "WATCHDOG=1\n"], Messages7),
