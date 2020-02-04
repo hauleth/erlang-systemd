@@ -32,11 +32,11 @@
 
 -record(state, {timeout, enabled=true}).
 
-start_link(Timeout) ->
-    gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Timeout, []).
+start_link(Config) ->
+    gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Config, []).
 
-init(Timeout) ->
-    State = #state{timeout=Timeout},
+init({Enabled, Timeout}) ->
+    State = #state{enabled=Enabled, timeout=Timeout},
     notify(State),
     {ok, State}.
 

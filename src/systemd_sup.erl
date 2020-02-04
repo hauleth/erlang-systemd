@@ -34,35 +34,39 @@ init(_Opts) ->
     SupFlags = #{
       strategy => one_for_one
      },
-    Pid = os:getpid(),
-
     SocketServer = #{id => socket,
                      start => {systemd_socket, start_link, [notify_socket()]}},
-    Timeout = case watchdog() of
-                   {Pid, TimeoutUS} when TimeoutUS > 0 ->
-                       erlang:convert_time_unit(TimeoutUS, microsecond, millisecond);
-                   _ -> infinity
-               end,
+
+    WatchdogConfig = watchdog(),
     Watchdog = #{id => watchdog,
-                 start => {systemd_watchdog, start_link, [Timeout]}},
+                 start => {systemd_watchdog, start_link, [WatchdogConfig]}},
 
     {ok, {SupFlags, [SocketServer, Watchdog]}}.
 
 watchdog() ->
-    Pid = case os:getenv(?WATCHDOG_PID) of
-                 false -> os:getpid();
-                 EnvPid -> EnvPid
+    Pid = os:getpid(),
+    Enabled = case os:getenv(?WATCHDOG_PID) of
+                 false -> true;
+                 Pid -> true;
+                 _ -> false
              end,
     Time = case os:getenv(?WATCHDOG_TIMEOUT) of
-               false -> -1;
+               false -> infinity;
                EnvTime ->
                    case string:to_integer(EnvTime) of
-                       {Timeout, ""} -> Timeout;
-                       _ -> -1
+                       {Timeout, ""} when Timeout > 0 ->
+                           erlang:convert_time_unit(Timeout,
+                                                    microsecond,
+                                                    millisecond);
+                       _ ->
+                           infinity
                    end
            end,
     unset(watchdog),
-    {Pid, Time}.
+    case {Enabled, Time} of
+        {_, infinity} -> {false, infinity};
+        Other -> Other
+    end.
 
 notify_socket() ->
     State = case os:getenv(?NOTIFY_SOCKET) of
