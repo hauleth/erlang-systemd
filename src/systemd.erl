@@ -164,10 +164,13 @@ normalize_state(stopping) -> "STOPPING=1";
 normalize_state(reloading) -> "RELOADING=1";
 normalize_state(watchdog) -> "WATCHDOG=1";
 normalize_state(watchdog_trigger) -> "WATCHDOG=trigger";
-normalize_state({status, Status}) -> ["STATUS=", Status];
-normalize_state({errno, Errno}) -> io_lib:fwrite("ERRNO=~B", [Errno]);
-normalize_state({buserror, Error}) -> ["BUSERROR=", Error];
-normalize_state({extend_timeout, {Time, Unit}}) ->
+normalize_state({status, Status}) -> systemd_protocol:encode("STATUS", Status);
+normalize_state({errno, Errno})
+   when is_integer(Errno) ->
+    io_lib:fwrite("ERRNO=~B", [Errno]);
+normalize_state({buserror, Error}) -> systemd_protocol:encode("BUSERROR", Error);
+normalize_state({extend_timeout, {Time, Unit}})
+  when is_integer(Time) ->
     Microsecs = erlang:convert_time_unit(Time, Unit, microsecond),
     io_lib:fwrite("EXTEND_TIMEOUT_USEC=~B", [Microsecs]);
 normalize_state(Msg)

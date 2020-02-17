@@ -330,13 +330,7 @@ build_message([{Name, Data} | Rest]) ->
     case string:is_empty(Data) of
         true -> build_message(Rest);
         false ->
-            Content = case string:find(Data, "\n") of
-                          nomatch -> [$=, Data];
-                          _ ->
-                              Len = iolist_size(Data),
-                              [$\n, <<Len:64/integer-little>>, Data]
-                      end,
-            [Name, Content, $\n | build_message(Rest)]
+            [systemd_protocol:encode(Name, Data) | build_message(Rest)]
     end.
 
 build_field({Prefix, msg}, #{msg := Msg, meta := Meta}, Config) ->
