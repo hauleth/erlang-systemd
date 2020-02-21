@@ -8,8 +8,12 @@
 all() -> [simple].
 
 simple(_Config) ->
-    ?assertEqual(<<"FOO=bar\n">>, encode("FOO", "bar")),
-    ?assertEqual(<<"FOO\n", 4:64/integer-little, "\nbar\n">>, encode("FOO", "\nbar")).
+    ?assertEqual(<<"FOO=bar\n">>, encode_field('FOO', [$b, "a", <<"r">>])),
+    ?assertEqual(<<"FOO=bar\n">>, encode_field('FOO', "bar")),
+    ?assertEqual(<<"FOO=bar\n">>, encode_field(foo, "bar")),
+    ?assertEqual(<<"FOO=bar\n">>, encode_field("foo", "bar")),
+    ?assertEqual(<<"FOO=bar\n">>, encode_field("FOO", "bar")),
+    ?assertEqual(<<"FOO\n", 4:64/integer-little, "\nbar\n">>, encode_field("FOO", "\nbar")).
 
-encode(Name, Data) ->
-    iolist_to_binary(systemd_protocol:encode(Name, Data)).
+encode_field(Name, Data) ->
+    iolist_to_binary(systemd_protocol:encode_field(Name, Data)).

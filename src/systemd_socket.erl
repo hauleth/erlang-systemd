@@ -35,22 +35,24 @@
 
 % # Internal interface
 
-send(Message) ->
-    gen_server:call(?NAME, {send, string:trim(Message, trailing, "\n")}).
+send({Field, Value}) ->
+    Msg = systemd_protocol:encode_field(Field, Value),
+    gen_server:call(?NAME, {send, Msg}).
 
 % # Behaviour implementation
 
 start_link(Address) ->
     gen_server:start_link({local, ?NAME}, ?MODULE, Address, []).
 
-init([]) -> {ok, []};
+init([]) ->
+    {ok, []};
 init(Address) ->
     % We never receive on this socket, so we set is as {active, false}
     {ok, Socket} = gen_udp:open(0, [binary, local, {active, false}]),
     {ok, {Socket, Address}}.
 
 handle_call({send, Message}, _Ref, {Socket, Address}=State) ->
-    ok = gen_udp:send(Socket, Address, 0, [Message, $\n]),
+    ok = gen_udp:send(Socket, Address, 0, Message),
     {reply, ok, State};
 handle_call(_Msg, _Ref, []) ->
     {reply, ok, []}.

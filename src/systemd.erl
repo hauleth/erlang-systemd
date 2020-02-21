@@ -32,7 +32,7 @@
     {errno, non_neg_integer()} |
     {buserror, unicode:chardata()} |
     {extend_timeout, {non_neg_integer(), erlang:time_unit()}} |
-    unicode:chardata().
+    {unicode:chardata(), unicode:chardata()}.
 -type sd_timeout() :: pos_integer().
 -type fd() :: integer() | {integer(), unicode:chardata()}.
 
@@ -45,7 +45,6 @@
 
 -export([unset_env/1,
          notify/1,
-         notify/2,
          watchdog/1,
          listen_fds/0,
          booted/0]).
@@ -146,35 +145,22 @@ unset_env(listen_fds) ->
 notify(State) ->
     systemd_socket:send(normalize_state(State)).
 
-%% @doc
-%% Send notification to the systemd socket.
-%%
-%% This function takes `Format' and `Data' that will be formatted in the same
-%% way as `io:fwrite/2'.
-%%
-%% @since 0.1.0
-%% @end
--spec notify(Format :: io:format(), Data :: [term()]) -> ok.
-notify(Format, Data) ->
-    systemd_socket:send(io_lib:fwrite(Format, Data)).
-
 %% TODO: Add support for passing FDs to the supervisor
-normalize_state(ready) -> "READY=1";
-normalize_state(stopping) -> "STOPPING=1";
-normalize_state(reloading) -> "RELOADING=1";
-normalize_state(watchdog) -> "WATCHDOG=1";
-normalize_state(watchdog_trigger) -> "WATCHDOG=trigger";
-normalize_state({status, Status}) -> systemd_protocol:encode("STATUS", Status);
+normalize_state(ready) -> {ready, "1"};
+normalize_state(stopping) -> {stopping, "1"};
+normalize_state(reloading) -> {reloading, "1"};
+normalize_state(watchdog) -> {watchdog, "1"};
+normalize_state(watchdog_trigger) -> {watchdog, <<"trigger">>};
+normalize_state({status, Status}) -> {"STATUS", Status};
 normalize_state({errno, Errno})
-   when is_integer(Errno) ->
-    io_lib:fwrite("ERRNO=~B", [Errno]);
-normalize_state({buserror, Error}) -> systemd_protocol:encode("BUSERROR", Error);
+  when is_integer(Errno) ->
+    {"ERRNO", integer_to_binary(Errno)};
+normalize_state({buserror, Error}) -> {"BUSERROR", Error};
 normalize_state({extend_timeout, {Time, Unit}})
   when is_integer(Time) ->
     Microsecs = erlang:convert_time_unit(Time, Unit, microsecond),
-    io_lib:fwrite("EXTEND_TIMEOUT_USEC=~B", [Microsecs]);
-normalize_state(Msg)
-  when is_list(Msg); is_binary(Msg) ->
+    {"EXTEND_TIMEOUT_USEC", integer_to_binary(Microsecs)};
+normalize_state({_, _} = Msg) ->
     Msg.
 
 %% ----------------------------------------------------------------------------
