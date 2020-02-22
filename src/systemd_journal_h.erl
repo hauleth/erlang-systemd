@@ -51,8 +51,8 @@
 %%       of 2-ary tuples  where first one MUST contain only uppercase ASCII
 %%       letters, digits and underscore characters, and must not start with
 %%       underscore. Field name and second one is field value in form of `iolist()'.
-%%       It is important to note that value can contain any data, and do not
-%%       need to be in any encodig, it can even be binary.
+%%       It is important to note that value can contain any data, and does not
+%%       need to be in any encoding; it can even be binary.
 %%
 %%       === Example ===
 %%
@@ -63,16 +63,16 @@
 %%           ].
 %%       '''
 %%
-%%       Rememer that all field names <b>MUST NOT</b> start with the underscore,
+%%       Remember that all field names <b>MUST NOT</b> start with the underscore,
 %%       otherwise `journald' can ignore them. Such behaviour is not enforced on
-%%       data returned by `report_cb' and it is left up to the user to
-%%       the implementor to remember about it.</dd>
+%%       data returned by `report_cb' and it is left up to the implementor to
+%%       remember it.</dd>
 %% </dl>
 %%
 %% == Fields ==
 %%
 %% Fields list contain definition of fields that will be presented in the log
-%% message feeded into `journald'. Few of them have special meaning and you can
+%% message fed into `journald'. Few of them have special meaning and you can
 %% see list of them in the <a href="https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html">
 %% `systemd.journal-fields(7)' manpage</a>.
 %%
