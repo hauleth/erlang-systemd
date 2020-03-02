@@ -50,8 +50,7 @@ notify(Config) ->
     systemd:notify({extend_timeout, {5, microsecond}}),
     systemd:notify({extend_timeout, {5, millisecond}}),
     systemd:notify({extend_timeout, {5, second}}),
-    systemd:notify("CUSTOM=message"),
-    systemd:notify("FORMATTED=~.16b", [16#deadbeef]),
+    systemd:notify({custom, "message"}),
 
     ct:sleep(10),
 
@@ -64,8 +63,7 @@ notify(Config) ->
                   "EXTEND_TIMEOUT_USEC=5\n",
                   "EXTEND_TIMEOUT_USEC=5000\n",
                   "EXTEND_TIMEOUT_USEC=5000000\n",
-                  "CUSTOM=message\n",
-                  "FORMATTED=deadbeef\n"], mock_systemd:messages(Pid)),
+                  "CUSTOM=message\n"], mock_systemd:messages(Pid)),
 
     ct:log("Connection address persists between process restarts"),
     gen_server:stop(systemd_socket, error, 100),

@@ -12,12 +12,9 @@
   {mod, {systemd_app, []}},
   {env,[{unset_env, true},
         {watchdog_scale, 2},
-        {logger,
-         [{handler,
-           systemd_journal,
-           systemd_journal_h,
-           #{formatter => {systemd_journal_formatter, #{}}}
-          }]}
+        {logger, [
+                  {handler, systemd_journal, systemd_journal_h, #{}}
+                 ]}
        ]},
   {modules, []},
 

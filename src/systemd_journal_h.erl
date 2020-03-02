@@ -23,19 +23,104 @@
 %% Run this after the `systemd' application is started:
 %%
 %% ```
-%% logger:add_handler(journal,
-%%                    systemd_journal_h,
-%%                    #{formatter => {systemd_journal_formatter, #{}}).
+%% logger:add_handler(journal, systemd_journal_h, #{}).
 %% '''
 %%
-%% It is very important to use `systemd_journal_formatter' here, otherwise the
-%% messages will not be recorded.
+%% == Options ==
 %%
-%% == Warning ==
+%% <dl>
+%%       <dt>`fields :: [field_definition()]'</dt>
+%%       <dd>Contains list of all fields that will be passed to the `journald'.
 %%
-%% This logger <b>should</b> always be used with `systemd_journal_formatter' unless
-%% you are completely sure what you are trying to do. Otherwise you can loose your
-%% log data.
+%%       Defaults to:
+%%
+%%       ```
+%%       [syslog_timestamp,
+%%        syslog_pid,
+%%        syslog_priority,
+%%        {"ERL_PID", pid},
+%%        {"CODE_FILE", file},
+%%        {"CODE_LINE", line},
+%%        {"CODE_MFA", mfa}]
+%%       '''
+%%
+%%       See {@section Fields} below.</dd>
+%%
+%%       <dt>`report_cb :: fun ((Prefix :: field_name(), logger:report()) -> [field()]'</dt>
+%%       <dd>Function that takes `Prefix' and Logger's report and returns list
+%%       of 2-ary tuples  where first one MUST contain only uppercase ASCII
+%%       letters, digits and underscore characters, and must not start with
+%%       underscore. Field name and second one is field value in form of `iolist()'.
+%%       It is important to note that value can contain any data, and does not
+%%       need to be in any encoding; it can even be binary.
+%%
+%%       === Example ===
+%%
+%%       ```
+%%       my_formatter(Prefix, #{field := Field}) when is_integer(Field) ->
+%%           [
+%%            {[Prefix,"_FIELD"], io_lib:format("~.16B", [Field]}
+%%           ].
+%%       '''
+%%
+%%       Remember that all field names <b>MUST NOT</b> start with the underscore,
+%%       otherwise `journald' can ignore them. Such behaviour is not enforced on
+%%       data returned by `report_cb' and it is left up to the implementor to
+%%       remember it.</dd>
+%% </dl>
+%%
+%% == Fields ==
+%%
+%% Fields list contain definition of fields that will be presented in the log
+%% message fed into `journald'. Few of them have special meaning and you can
+%% see list of them in the <a href="https://www.freedesktop.org/software/systemd/man/systemd.journal-fields.html">
+%% `systemd.journal-fields(7)' manpage</a>.
+%%
+%% Metakeys (i.e. atoms) in `fields' list will be sent to
+%% the `journald' as a uppercased atom names.
+%%
+%% Entries in form of `{Name :: field_name(), metakey()}' will use `Name'
+%% as the field name. `Name' will be checked if it is correct `journald' field
+%% name (i.e. contains only ASCII letters, digits, and underscores,
+%% additionally do not start with underscore).
+%%
+%% Entries in form of `{Name :: field_name(), Data :: iolist()}' will use
+%% `Name' as field name and will contain `Data' as a literal.
+%%
+%% If entry data is empty or not set then it will be ommited in the output.
+%%
+%% === Special fields ===
+%%
+%% Special fields availables:
+%%
+%% <dl>
+%%      <dt>`level'</dt>
+%%      <dd>Log level presented as string.</dd>
+%%      <dt>`priority'</dt>
+%%      <dd>Log level presented as decimal representation of syslog level.</dd>
+%%      <dt>`os_pid'</dt>
+%%      <dd>OS PID for current Erlang process. This is <b>NOT Erlang PID</b>.</dd>
+%%      <dt>`mfa'</dt>
+%%      <dd>Calling function presented in form `Module:Function/Arity'.</dd>
+%%      <dt>`time'</dt>
+%%      <dd>Timestamp of log message presented in RFC3339 format in UTC.</dd>
+%% </dl>
+%%
+%% Otherwise field is treated as a entry key where `key' is equivalent of
+%% `[key]' and is used as a list of atoms to extract data from the metadata map.
+%%
+%% === Syslog compatibility ===
+%%
+%% To provide better compatibility and user convinience:
+%%
+%% <dl>
+%%      <dt>`syslog_priority'</dt>
+%%      <dd>Will work exactly the same as `{"SYSLOG_PRIORITY", priority}'.</dd>
+%%      <dt>`syslog_pid'</dt>
+%%      <dd>Will work exactly the same as `{"SYSLOG_PID", os_pid}'.</dd>
+%%      <dt>`syslog_timestamp'</dt>
+%%      <dd>Will work exactly the same as `{"SYSLOG_TIMESTAMP", time}'.</dd>
+%% </dl>
 %%
 %% @since 0.3.0
 %% @end
@@ -49,7 +134,8 @@
 
 % logger handler callbacks
 -export([adding_handler/1,
-         % filter_config/1,
+         changing_config/3,
+         filter_config/1,
          removing_handler/1,
          log/2]).
 
@@ -60,10 +146,18 @@
          handle_cast/2,
          handle_info/2]).
 
--define(FORMATTER, {systemd_journal_formatter, #{}}).
+-define(FORMATTER, {logger_formatter, #{}}).
 -define(CHILD_SPEC(Id, Args), #{id => Id,
                                 start => {?MODULE, start_link, Args},
                                 restart => temporary}).
+
+-define(DEFAULT_FIELDS, [{"SYSLOG_TIMESTAMP", time},
+                         {"SYSLOG_PID", os_pid},
+                         {"SYSLOG_PRIORITY", priority},
+                         {"ERL_PID", pid},
+                         {"CODE_FILE", file},
+                         {"CODE_LINE", line},
+                         {"CODE_MFA", mfa}]).
 
 % -----------------------------------------------------------------------------
 % Logger Handler
@@ -72,17 +166,117 @@
 -spec adding_handler(logger:handler_config()) -> {ok, logger:handler_config()} |
                                                  {error, term()}.
 adding_handler(HConfig) ->
-    Config = maps:get(config, HConfig, #{}),
-    Path = maps:get(path, Config, ?JOURNAL_SOCKET),
-    case start_connection(HConfig) of
-        {ok, Pid} ->
-            {ok, Socket} = gen_server:call(Pid, get),
-            {ok, HConfig#{config => Config#{pid => Pid,
-                                            socket => Socket,
-                                            path => Path}}};
-        Err ->
-            Err
+    Config0 = maps:get(config, HConfig, #{}),
+    {Path, Config} = case maps:is_key(path, Config0) of
+                         true -> maps:take(path, Config0);
+                         false -> {?JOURNAL_SOCKET, Config0}
+                     end,
+    case validate_config(Config) of
+        ok ->
+            Fields = [translate_field(Field)
+                      || Field <- maps:get(fields, Config, ?DEFAULT_FIELDS)],
+            case start_connection(HConfig) of
+                {ok, Pid} ->
+                    {ok, Socket} = gen_server:call(Pid, get),
+                    {ok, HConfig#{config => Config#{pid => Pid,
+                                                    fields => Fields,
+                                                    socket => Socket,
+                                                    path => Path}}};
+                Err ->
+                    Err
+            end;
+        Error -> Error
     end.
+
+changing_config(update, #{config := OldHConfig}, NewConfig) ->
+    NewHConfig = maps:get(config, NewConfig, #{}),
+    case validate_config(NewHConfig) of
+        ok ->
+            Fields = case maps:is_key(fields, NewHConfig) of
+                         true ->
+                             NewFields = maps:get(fields, NewHConfig),
+                             [translate_field(Field) || Field <- NewFields];
+                         false ->
+                             maps:get(fields, OldHConfig)
+                     end,
+            {ok, NewConfig#{config => OldHConfig#{fields := Fields}}};
+        Error -> Error
+    end;
+changing_config(set, #{config := OldHConfig}, NewConfig) ->
+    NewHConfig = maps:get(config, NewConfig, #{}),
+    case validate_config(NewHConfig) of
+        ok ->
+            Fields = maps:get(fields, NewHConfig, ?DEFAULT_FIELDS),
+            Formatted = [translate_field(Field) || Field <- Fields],
+            {ok, NewConfig#{config => OldHConfig#{fields := Formatted}}};
+        Error -> Error
+    end.
+
+translate_field(syslog_timestamp) -> {"SYSLOG_TIMESTAMP", time};
+translate_field(syslog_pid) -> {"SYSLOG_PID", os_pid};
+translate_field(syslog_priority) -> {"SYSLOG_PRIORITY", priority};
+translate_field(Atom) when is_atom(Atom) -> {Atom, Atom};
+translate_field({_Name, _Data} = Field) -> Field.
+
+validate_config(Config0) when is_map(Config0) ->
+    Config = maps:without([pid, socket, path], Config0),
+    do_validate(maps:to_list(Config)).
+
+do_validate([{fields, Fields} | Rest]) ->
+    case check_fields(Fields) of
+        ok -> do_validate(Rest);
+        Error -> Error
+    end;
+do_validate([]) -> ok;
+do_validate([Option | _]) ->
+    {error, {invalid_option, Option}}.
+
+-define(IS_STRING(Name), (is_binary(Name) orelse is_list(Name))).
+
+check_fields([Atom | Rest])
+  when is_atom(Atom) ->
+    Name = atom_to_list(Atom),
+    case check_name(Name) of
+        true -> check_fields(Rest);
+        false -> {error, {name_invalid, Name}}
+    end;
+check_fields([{Atom, _} | Rest])
+  when is_atom(Atom) ->
+    check_fields([Atom | Rest]);
+check_fields([{Name, _} | Rest])
+  when ?IS_STRING(Name) ->
+    case check_name(unicode:characters_to_list(Name)) of
+        true -> check_fields(Rest);
+        false -> {error, {name_invalid, Name}}
+    end;
+check_fields([]) ->
+    ok;
+check_fields([Unknown | _]) ->
+    {error, {invalid_field, Unknown}}.
+
+check_name([C|Rest])
+  when $A =< C, C =< $Z;
+       $a =< C, C =< $z;
+       $0 =< C, C =< $9 ->
+    check_name_rest(Rest);
+check_name(_) ->
+    false.
+
+check_name_rest([C|Rest])
+  when $A =< C, C =< $Z;
+       $a =< C, C =< $z;
+       $0 =< C, C =< $9;
+       C == $_ ->
+    check_name_rest(Rest);
+check_name_rest([]) ->
+    true;
+check_name_rest(_) ->
+    false.
+
+-spec filter_config(logger:handler_config()) -> logger:handler_config().
+filter_config(#{config := Config0} = HConfig) ->
+    Config = maps:without([pid, socket, path], Config0),
+    HConfig#{config => Config}.
 
 start_connection(#{id := Id}) ->
     case supervisor:start_child(?SUPERVISOR, ?CHILD_SPEC(Id, [])) of
@@ -98,14 +292,81 @@ removing_handler(#{config := #{pid := Pid}}) ->
 
 %% @hidden
 -spec log(logger:log_event(), logger:handler_config()) -> ok.
-log(LogEvent, #{config := #{socket := Socket, path := Path}}=Config) ->
+log(LogEvent, #{config := #{socket := Socket, path := Path, fields := Fields}}=Config) ->
     {FMod, FConf} = maps:get(formatter, Config, ?FORMATTER),
-    Buffer = FMod:format(LogEvent, FConf),
-    case string:is_empty(Buffer) of
+    Msg = FMod:format(LogEvent, FConf),
+    case string:is_empty(Msg) of
         false ->
-            ok = gen_udp:send(Socket, Path, 0, Buffer);
+            FieldsData = [{Name, get_field(Field, LogEvent, Config)}
+                          || {Name, Field} <- Fields],
+            Data = systemd_protocol:encode([{"MESSAGE", Msg} | FieldsData]),
+            ok = gen_udp:send(Socket, Path, 0, Data);
         true -> ok
     end.
+
+get_field(os_pid, _LogEvent, _Config) ->
+    os:getpid();
+get_field(time, #{meta := #{time := Time}}, _Config) ->
+    calendar:system_time_to_rfc3339(Time, [{unit, microsecond},
+                                           {offset, "Z"}]);
+get_field(mfa, #{meta := #{mfa := {M, F, A}}}, _Config) ->
+    io_lib:format("~tp:~tp/~B", [M, F, A]);
+get_field(priority, #{level := Level}, _Config) ->
+    level_to_char(Level);
+get_field(level, #{level := Level}, _Config) ->
+    atom_to_binary(Level, utf8);
+get_field(Metakey, #{meta := Meta}, _Config) ->
+    case get_meta(Metakey, Meta) of
+        undefined -> "";
+        Data -> to_string(Data)
+    end.
+
+get_meta([], Data) ->
+    Data;
+get_meta([Atom | Rest], Meta) when is_map(Meta) ->
+    case maps:get(Atom, Meta, undefined) of
+        undefined -> undefined;
+        Next -> get_meta(Rest, Next)
+    end;
+get_meta(Atom, Meta) when is_atom(Atom) ->
+    maps:get(Atom, Meta, undefined);
+get_meta(_, _) ->
+    undefined.
+
+to_string(Atom) when is_atom(Atom) ->
+    atom_to_list(Atom);
+to_string(Pid) when is_pid(Pid) ->
+    pid_to_list(Pid);
+to_string(Ref) when is_reference(Ref) ->
+    ref_to_list(Ref);
+to_string(Int) when is_integer(Int) ->
+    integer_to_list(Int);
+to_string(List) when is_list(List) ->
+    case printable_list(List) of
+        true -> List;
+        false -> io_lib:format("~tp", [List])
+    end;
+to_string(Bin) when is_binary(Bin) ->
+    case printable_list(binary_to_list(Bin)) of
+        true -> Bin;
+        false -> io_lib:format("~tp", [Bin])
+    end;
+to_string(X) ->
+    io_lib:format("~tp", [X]).
+
+printable_list([]) ->
+    false;
+printable_list(X) ->
+    io_lib:printable_list(X).
+
+level_to_char(debug)     -> "7";
+level_to_char(info)      -> "6";
+level_to_char(notice)    -> "5";
+level_to_char(warning)   -> "4";
+level_to_char(error)     -> "3";
+level_to_char(critical)  -> "2";
+level_to_char(alert)     -> "1";
+level_to_char(emergency) -> "0".
 
 % -----------------------------------------------------------------------------
 % Socket handler
@@ -121,7 +382,6 @@ init(_Arg) ->
     {ok, Socket}.
 
 %% @hidden
-% TODO: Implement async handler and overload protectopn
 handle_call(get, _Ref, Socket) ->
     {reply, {ok, Socket}, Socket};
 handle_call(stop, _Ref, Socket) ->
