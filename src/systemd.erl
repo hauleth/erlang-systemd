@@ -45,9 +45,12 @@
 
 -export([unset_env/1,
          notify/1,
+         ready/0,
          watchdog/1,
          listen_fds/0,
          booted/0]).
+
+-export([spawn_ready/0]).
 
 %% @doc
 %% Unset environment variables for given subsystem.
@@ -162,6 +165,26 @@ normalize_state({extend_timeout, {Time, Unit}})
     {"EXTEND_TIMEOUT_USEC", integer_to_binary(Microsecs)};
 normalize_state({_, _} = Msg) ->
     Msg.
+
+%% @doc
+%% Returns child spec for task that will inform systemd that application is
+%% ready.
+%%
+%% This is helper function that will return `supervisor:child_spec/0' map that
+%% contains temporary job that will notify systemd about application readiness.
+%% This is meant to be inserted into your supervison tree when application is
+%% ready (usually at the end).
+%% @end
+ready() ->
+    #{id => systemd_watchdog_ready,
+      start => {?MODULE, spawn_ready, []},
+      restart => temporary,
+      shutdown => brutal_kill}.
+
+%% @hidden helper for `ready/0' function that spawn process that notify about
+%% application readiness.
+spawn_ready() ->
+    {ok, spawn_link(fun() -> systemd:notify(ready) end)}.
 
 %% ----------------------------------------------------------------------------
 
