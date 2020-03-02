@@ -5,7 +5,7 @@
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("common_test/include/ct.hrl").
 
-all() -> [notify, watchdog, listen_fds, socket].
+all() -> [notify, watchdog, ready, listen_fds, socket].
 
 init_per_testcase(Name, Config0) ->
     PrivDir = ?config(priv_dir, Config0),
@@ -36,7 +36,8 @@ end_per_testcase(Name, Config0) ->
 notify(init, Config) ->
     ok = start_with_socket(?config(socket, Config)),
     Config;
-notify(_, Config) -> Config.
+notify(_, Config) ->
+    Config.
 
 notify(Config) ->
     Pid = ?config(mock_pid, Config),
@@ -252,6 +253,23 @@ watchdog(Config) ->
     ok = stop(Config),
 
     ok.
+
+ready(init, Config) ->
+    ok = start_with_socket(?config(socket, Config)),
+    Config;
+ready(_, Config) ->
+    stop(Config),
+    Config.
+
+ready(Config) ->
+    Pid = ?config(mock_pid, Config),
+    {ok, _Pid} = mock_supervisor:start_link([systemd:ready()]),
+    ct:sleep(10),
+
+    ?assertEqual(["READY=1\n"], mock_systemd:messages(Pid)),
+
+    ok.
+
 
 listen_fds(init, Config) -> Config;
 listen_fds(finish, Config) ->
