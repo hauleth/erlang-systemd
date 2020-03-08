@@ -30,13 +30,12 @@
 -export([start_link/1,
          init/1,
          handle_call/3,
-         handle_cast/2,
-         handle_info/2]).
+         handle_cast/2]).
 
 % # Internal interface
 
-send({Field, Value}) ->
-    Msg = systemd_protocol:encode_field(Field, Value),
+send(Data) ->
+    Msg = systemd_protocol:encode(Data),
     gen_server:call(?NAME, {send, Msg}).
 
 % # Behaviour implementation
@@ -58,7 +57,4 @@ handle_call(_Msg, _Ref, []) ->
     {reply, ok, []}.
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-handle_info(_Msg, State) ->
     {noreply, State}.

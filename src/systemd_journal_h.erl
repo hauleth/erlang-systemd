@@ -143,8 +143,7 @@
 -export([start_link/0,
          init/1,
          handle_call/3,
-         handle_cast/2,
-         handle_info/2]).
+         handle_cast/2]).
 
 -define(FORMATTER, {logger_formatter, #{}}).
 -define(CHILD_SPEC(Id, Args), #{id => Id,
@@ -390,7 +389,3 @@ handle_call(stop, _Ref, Socket) ->
 %% @hidden
 handle_cast(_Msg, Socket) ->
     {noreply, Socket}.
-
-%% @hidden
-handle_info(_Msg, State) ->
-    {noreply, State}.
