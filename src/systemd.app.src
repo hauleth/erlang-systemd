@@ -11,6 +11,7 @@
    ]},
   {mod, {systemd_app, []}},
   {env,[{unset_env, true},
+        {auto_kmsg, true},
         {watchdog_scale, 2},
         {logger, [
                   {handler, systemd_journal, systemd_journal_h, #{}}
