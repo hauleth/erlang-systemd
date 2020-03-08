@@ -26,7 +26,7 @@
          stop/1]).
 
 start(_Type, _Opts) ->
-    case application:get_env(systemd, auto_kmsg) of
+    case application:get_env(systemd, auto_formatter) of
         {ok, true} -> systemd_kmsg_formatter:auto_install();
         _ -> ok
     end,

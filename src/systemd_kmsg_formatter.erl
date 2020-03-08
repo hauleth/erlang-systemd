@@ -22,7 +22,27 @@
 %% This simply adds special prefix to the message formatted by the formatter
 %% specified via `parent' option.
 %%
-%% This can be used with `logger_std_h' handler with `type => standard_error'.
+%% == Automatic registration ==
+%%
+%% This formatter will be automatically registered for all handlers that use
+%% `logger_std_h' with `type' set to one of `standard_io' or `standard_error' if
+%% the respective FDs point to journal that is pointed by `JOURNAL_STREAM' which
+%% is autometically set by systemd if one of the options `StandardOutput' or
+%% `StandardError' is set to `journal'. So if you are using default logger
+%% handler then all you need to do is to set
+%%
+%% ```
+%% StandardOutput=journal
+%% '''
+%%
+%% In your `systemd.service(8)' file, and this library will handle the rest.
+%%
+%% It is important that this formatter will still work poorly with multiline
+%% logs, if you are using such, then check out {@link systemd_journal_h.
+%% `systemd_journal_h'} handler (which <b>SHOULD NOT</b> be used with this
+%% formatter).
+%%
+%% To disable this behaviour set `auto_formatter' option for `systemd' to `false'.
 %%
 %% == Example ==
 %%
@@ -90,6 +110,8 @@ format_level(notice)    -> ?SD_NOTICE;
 format_level(info)      -> ?SD_INFO;
 format_level(debug)     -> ?SD_DEBUG.
 
+%% @hidden Automatically install kmsg formatter for all handlers that use
+%% logger_std_h and points to journal stream
 auto_install() ->
     case get_journal_stream() of
         {Dev, Inode} ->
