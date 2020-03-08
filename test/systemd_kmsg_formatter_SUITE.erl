@@ -7,15 +7,37 @@
 
 -include_lib("kernel/include/file.hrl").
 
-all() -> [default, custom_parent, log_prefix, auto_install].
+all() -> [default, custom_parent, log_prefix, {group, auto_install}].
 
-init_per_testcase(auto_install, Config) ->
+groups() -> [
+             {auto_install, [shuffle], [non_standard_handler,
+                                        {group, auto_install_standard_error},
+                                        {group, auto_install_standard_io}]},
+             {auto_install_standard_error, [shuffle], [auto_install]},
+             {auto_install_standard_io, [shuffle], [auto_install]}
+            ].
+
+init_per_group(auto_install_standard_error, Config) ->
+    [{type, standard_error} | Config];
+init_per_group(auto_install_standard_io, Config) ->
+    [{type, standard_io} | Config];
+init_per_group(_, Config) ->
+    Config.
+
+end_per_group(_, Config) -> Config.
+
+init_per_testcase(Test, Config) when
+      Test =:= auto_install;
+      Test =:= non_standard_handler ->
     OldHandlers = logger:get_handler_config(),
 
     [{old_handlers, OldHandlers} | Config];
 init_per_testcase(_, Config) -> Config.
 
-end_per_testcase(auto_install, Config) ->
+end_per_testcase(Test, Config) when
+      Test =:= auto_install;
+      Test =:= non_standard_handler ->
+    os:unsetenv("JOURNAL_STREAM"),
     OldHandlers = ?config(old_handlers, Config),
 
     % Cleanup all handlers, so we will remove added ones
@@ -65,45 +87,63 @@ log_prefix(_Config) ->
 
     ok.
 
-auto_install(_Config) ->
-    Type = standard_io,
-    {ok, OrigHConfig} = logger:get_handler_config(default),
-    #{config := #{type := standard_io}, formatter := {Parent, _}} = OrigHConfig,
+auto_install(Config) ->
+    Type = ?config(type, Config),
+    ok = logger:add_handler(Type, logger_std_h, #{
+                                       config => #{type => Type},
+                                       formatter => {logger_formatter, #{}}
+                                      }),
+    {ok, OrigHConfig} = logger:get_handler_config(Type),
+    #{config := #{type := Type}, formatter := {Parent, _}} = OrigHConfig,
     {ok, #file_info{major_device=Dev, inode=Inode}} = file_info(Type),
 
     ct:log("Do nothing when there is no JOURNAL_STREAM"),
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, OrigHConfig} = logger:get_handler_config(default),
+    ?assertMatch({ok, OrigHConfig}, logger:get_handler_config(Type)),
 
     ct:log("Do nothing when JOURNAL_STREAM is invalid"),
     os:putenv("JOURNAL_STREAM", ""),
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, OrigHConfig} = logger:get_handler_config(default),
+    {ok, OrigHConfig} = logger:get_handler_config(Type),
     os:putenv("JOURNAL_STREAM", ":"),
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, OrigHConfig} = logger:get_handler_config(default),
+    {ok, OrigHConfig} = logger:get_handler_config(Type),
     os:putenv("JOURNAL_STREAM", "A:B"),
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, OrigHConfig} = logger:get_handler_config(default),
+    {ok, OrigHConfig} = logger:get_handler_config(Type),
 
-    ct:log("Do nothing when standard_io uses different device"),
+    ct:log("Do nothing when ~p uses different device", [Type]),
     set_stream(Dev + 1, Inode),
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, OrigHConfig} = logger:get_handler_config(default),
+    {ok, OrigHConfig} = logger:get_handler_config(Type),
 
-    ct:log("Do nothing when standard_io uses different Inode"),
+    ct:log("Do nothing when ~p uses different Inode", [Type]),
     set_stream(Dev, Inode + 1),
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, OrigHConfig} = logger:get_handler_config(default),
+    {ok, OrigHConfig} = logger:get_handler_config(Type),
 
     ct:log("Update stdout logger"),
     set_stream(Dev, Inode),
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, #{formatter := {systemd_kmsg_formatter, #{parent := Parent}}}} = logger:get_handler_config(default),
+    {ok, #{formatter := {systemd_kmsg_formatter, #{parent := Parent}}}} = logger:get_handler_config(Type),
     % Double call will be NOOP
     ok = systemd_kmsg_formatter:auto_install(),
-    {ok, #{formatter := {systemd_kmsg_formatter, #{parent := Parent}}}} = logger:get_handler_config(default),
+    {ok, #{formatter := {systemd_kmsg_formatter, #{parent := Parent}}}} = logger:get_handler_config(Type),
     ok.
+
+non_standard_handler(_Config) ->
+    {ok, #file_info{major_device=Dev, inode=Inode}} = file_info(standard_io),
+    ok = logger:add_handler(non_standard_handler, logger_std_h, #{
+                                       config => #{file => "/dev/null"},
+                                       formatter => {logger_formatter, #{}}
+                                      }),
+    {ok, OrigHConfig} = logger:get_handler_config(non_standard_handler),
+    set_stream(Dev, Inode),
+    ok = systemd_kmsg_formatter:auto_install(),
+    {ok, OrigHConfig} = logger:get_handler_config(non_standard_handler),
+
+    ok.
+
 
 % -----------------------------------------------------------------------------
 % Internal
@@ -125,5 +165,5 @@ set_stream(Dev, Inode) ->
 
 file_info(standard_io) ->
     file:read_file_info("/dev/stdout");
-file_info(standard_err) ->
+file_info(standard_error) ->
     file:read_file_info("/dev/stderr").
