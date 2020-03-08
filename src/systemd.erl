@@ -141,9 +141,11 @@ unset_env(listen_fds) ->
 %%
 %% @since 0.1.0
 %% @end
--spec notify(State :: state()) -> ok.
+-spec notify(State :: state() | [state()]) -> ok.
+notify(List) when is_list(List) ->
+    systemd_socket:send([normalize_state(State) || State <- List]);
 notify(State) ->
-    systemd_socket:send(normalize_state(State)).
+    notify([State]).
 
 %% TODO: Add support for passing FDs to the supervisor
 normalize_state(ready) -> {ready, "1"};
