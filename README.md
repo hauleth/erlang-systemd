@@ -87,13 +87,42 @@ systemd:notify(reloading).
 
 Message about application shutting down will be handled automatically for you.
 
+For simplification of readiness notification there is `systemd:ready()` function
+that returns child specs for temporary process that can be used as a part of
+your supervision tree to mark the point when application is ready, ex.:
+
+```erlang
+-module(my_app_sup).
+
+-behaviour(supervisor).
+
+-export([start_link/1,
+         init/1]).
+
+start_link(Opts) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, Opts).
+
+init(_Opts) ->
+    SupFlags = #{
+      strategy => one_for_one
+    },
+    Children = [
+      my_app_db:child_spec(),
+      my_app_webserver:child_spec(),
+      systemd:ready(),
+      my_app_periodic_job:child_spec()
+    ],
+
+    {ok, {SupFlags, Children}}.
+```
+
 ### Logs
 
 To handle logs you have 2 possible options:
 
-- Output data to standard error with special prefixes. This approach is much
-  simpler and straightforward, however do not support structured logging and
-  multiline messages.
+- Output data to standard output or error with special prefixes. This approach
+  is much simpler and straightforward, however do not support structured logging
+  and multiline messages.
 - Use datagram socket with special communication protocol. This requires a
   little bit more effort to set up, but seamlessly supports structured logging
   and multiline messages.
@@ -103,21 +132,32 @@ both?) your app will decide to use.
 
 #### Standard error
 
-There is `systemd_stderr_formatter` which can be used with any logger that
-outputs to standard error, for example `logger_std_h`. So to use this format it
-is the best to define in your `sys.config`:
+There is `systemd_kmsg_formatter` which formats data using `kmsg`-like level
+prefixes can be used with any logger that outputs to standard output or
+standard error if this is attached to the journal. By default `systemd` library
+will update all handlers that use `logger_std_h` with type `standard_io` or
+`standard_error` that are attached to the journal (it is automatically detected
+via `JOURNAL_STREAM` environment variable). You can disable that behaviour by
+setting:
 
 ```erlang
 [
-  {kernel,
-   [{logger,
-     [{handler, default, logger_std_h, #{formatter => {systemd_stderr_formatter, #{}},
-                                                       type => standard_error}}]
-    }}}
+  {systemd, [{auto_formatter, false}]}
 ].
 ```
 
-This will add required prefixes automatically for you.
+For custom loggers you can use this formatter by adding new option `parent` to
+the formatter options that will be used as "upstream" formatter, ex.:
+
+```erlang
+logger:add_handler(example_handler, logger_disk_log_h, #{
+  formatter => {systemd_kmsg_formatter, #{parent => logger_formatter,
+                                          template => [msg]},
+  config => #{
+    file => "/var/log/my_app.log"
+  }
+}).
+```
 
 #### Datagram socket
 
@@ -133,6 +173,9 @@ Be aware that this one is **not** guaranteed to work on non-systemd systems, so
 if You aren't sure if that application will be ran on systemd-enabled OS then
 you shouldn't use it as an only logger solution in your application or you can
 end with no logger attached at all.
+
+This handler **should not** be used with `systemd_kmsg_formatter` as this will
+result with pointless `kmsg`-like prefixes in the log messages.
 
 ## License
 

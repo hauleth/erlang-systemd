@@ -22,14 +22,34 @@
 %% This simply adds special prefix to the message formatted by the formatter
 %% specified via `parent' option.
 %%
-%% This can be used with `logger_std_h' handler with `type => standard_error'.
+%% == Automatic registration ==
+%%
+%% This formatter will be automatically registered for all handlers that use
+%% `logger_std_h' with `type' set to one of `standard_io' or `standard_error' if
+%% the respective FDs point to journal that is pointed by `JOURNAL_STREAM' which
+%% is autometically set by systemd if one of the options `StandardOutput' or
+%% `StandardError' is set to `journal'. So if you are using default logger
+%% handler then all you need to do is to set
+%%
+%% ```
+%% StandardOutput=journal
+%% '''
+%%
+%% In your `systemd.service(8)' file, and this library will handle the rest.
+%%
+%% It is important that this formatter will still work poorly with multiline
+%% logs, if you are using such, then check out {@link systemd_journal_h.
+%% `systemd_journal_h'} handler (which <b>SHOULD NOT</b> be used with this
+%% formatter).
+%%
+%% To disable this behaviour set `auto_formatter' option for `systemd' to `false'.
 %%
 %% == Example ==
 %%
 %% ```
-%% logger:add_handler(stderr,
+%% logger:add_handler(journal_stdout,
 %%                    logger_std_h,
-%%                    #{formatter => {systemd_stderr_formatter, #{}}).
+%%                    #{formatter => {systemd_kmsg_formatter, #{}}).
 %% '''
 %%
 %% == Options ==
@@ -45,12 +65,15 @@
 %%
 %% @since 0.3.0
 %% @end
--module(systemd_stderr_formatter).
+-module(systemd_kmsg_formatter).
 
 -include("systemd.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -export([check_config/1,
          format/2]).
+
+-export([auto_install/0]).
 
 %% @hidden
 -spec check_config(logger:formatter_config()) -> ok | {error, term()}.
@@ -86,3 +109,48 @@ format_level(warning)   -> ?SD_WARNING;
 format_level(notice)    -> ?SD_NOTICE;
 format_level(info)      -> ?SD_INFO;
 format_level(debug)     -> ?SD_DEBUG.
+
+%% @hidden Automatically install kmsg formatter for all handlers that use
+%% logger_std_h and points to journal stream
+auto_install() ->
+    case get_journal_stream() of
+        {Dev, Inode} ->
+            [auto_install(Dev, Inode, Config) || Config <- logger:get_handler_config()];
+        _ -> ok
+    end,
+    ok.
+
+auto_install(Dev, Inode,
+             #{id := Id,
+               module := logger_std_h,
+               config := #{type := Type},
+               formatter := {FMod, FConf}}) when
+      FMod =/= ?MODULE ->
+    case file_info(Type) of
+        {ok, #file_info{major_device=Dev,
+                        inode=Inode}} ->
+            logger:update_handler_config(
+              Id,
+              #{formatter => {?MODULE, FConf#{parent => FMod}}});
+        _ ->
+            ok
+    end;
+auto_install(_Dev, _Inode, _Config) ->
+    ok.
+
+get_journal_stream() ->
+    Env = os:getenv("JOURNAL_STREAM", ""),
+    case string:split(Env, ":") of
+        [DevStr, InodeStr | _] ->
+            try {list_to_integer(DevStr), list_to_integer(InodeStr)}
+            catch
+                error:badarg:_ -> error
+            end;
+        _ -> error
+    end.
+
+file_info(standard_io) ->
+    file:read_file_info("/dev/stdout");
+file_info(standard_error) ->
+    file:read_file_info("/dev/stderr");
+file_info(_) -> {error, unknown_device}.
