@@ -82,8 +82,11 @@ log_prefix(_Config) ->
     "<6>foo" = format(info     , {string, "foo"}, #{}, Config0),
     "<7>foo" = format(debug    , {string, "foo"}, #{}, Config0),
 
+    "<0>foo" = format(emergency, {string, <<"foo">>}, #{}, Config0),
+
     Config1 = Config0#{single_line => false},
     "<0>foo\n<0>bar" = format(emergency, {string, "foo\nbar"}, #{}, Config1),
+    "<0>foo\n<0>bar" = format(emergency, {string, [<<"foo">>, [$\n, "bar"]]}, #{}, Config1),
 
     ok.
 
