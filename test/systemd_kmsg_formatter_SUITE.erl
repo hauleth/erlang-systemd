@@ -88,6 +88,8 @@ log_prefix(_Config) ->
     "<0>foo\n<0>bar" = format(emergency, {string, "foo\nbar"}, #{}, Config1),
     "<0>foo\n<0>bar" = format(emergency, {string, [<<"foo">>, [$\n, "bar"]]}, #{}, Config1),
 
+    "<0>foo\n<0>bar\n<0>baz" = format(emergency, {string, "foo\nbar\nbaz"}, #{}, Config1),
+
     ok.
 
 auto_install(Config) ->

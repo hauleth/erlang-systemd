@@ -13,7 +13,10 @@ simple(_Config) ->
     ?assertEqual(<<"FOO=bar\n">>, encode_field(foo, "bar")),
     ?assertEqual(<<"FOO=bar\n">>, encode_field("foo", "bar")),
     ?assertEqual(<<"FOO=bar\n">>, encode_field("FOO", "bar")),
-    ?assertEqual(<<"FOO\n", 4:64/integer-little, "\nbar\n">>, encode_field("FOO", "\nbar")).
+    ?assertEqual(<<"FOO\n", 4:64/integer-little, "\nbar\n">>, encode_field("FOO", "\nbar")),
+    ?assertEqual(<<"FOO\n", 8:64/integer-little, "\nbar\nbaz\n">>, encode_field("FOO", "\nbar\nbaz")),
+
+    ok.
 
 encode_field(Name, Data) ->
     iolist_to_binary(systemd_protocol:encode_field(Name, Data)).
