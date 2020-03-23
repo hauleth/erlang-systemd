@@ -146,7 +146,7 @@ unset_env(listen_fds) ->
 %% @end
 -spec notify(State :: state() | [state()]) -> ok.
 notify(List) when is_list(List) ->
-    systemd_socket:send([normalize_state(State) || State <- List]);
+    systemd_socket:send([normalize_state(State) || State <- List], 0, []);
 notify(State) ->
     notify([State]).
 
