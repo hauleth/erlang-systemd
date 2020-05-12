@@ -46,7 +46,7 @@
 %%
 %%       See {@section Fields} below.</dd>
 %%
-%%       <dt>`report_cb :: fun ((Prefix :: field_name(), logger:report()) -> [field()]'</dt>
+%%       <dt>`report_cb :: fun ((logger:report()) -> [field()]'</dt>
 %%       <dd>Function that takes `Prefix' and Logger's report and returns list
 %%       of 2-ary tuples  where first one MUST contain only uppercase ASCII
 %%       letters, digits and underscore characters, and must not start with
@@ -187,6 +187,7 @@ adding_handler(HConfig) ->
         Error -> Error
     end.
 
+%% @hidden
 changing_config(update, #{config := OldHConfig}, NewConfig) ->
     NewHConfig = maps:get(config, NewConfig, #{}),
     case validate_config(NewHConfig) of
@@ -272,6 +273,7 @@ check_name_rest([]) ->
 check_name_rest(_) ->
     false.
 
+%% @hidden
 -spec filter_config(logger:handler_config()) -> logger:handler_config().
 filter_config(#{config := Config0} = HConfig) ->
     Config = maps:without([pid, socket, path], Config0),
@@ -291,30 +293,31 @@ removing_handler(#{config := #{pid := Pid}}) ->
 
 %% @hidden
 -spec log(logger:log_event(), logger:handler_config()) -> ok.
-log(LogEvent, #{config := #{socket := Socket, path := Path, fields := Fields}}=Config) ->
-    {FMod, FConf} = maps:get(formatter, Config, ?FORMATTER),
+log(LogEvent, #{config := Config} = HConfig) ->
+    #{socket := Socket, path := Path, fields := Fields} = Config,
+    {FMod, FConf} = maps:get(formatter, HConfig, ?FORMATTER),
     Msg = FMod:format(LogEvent, FConf),
     case string:is_empty(Msg) of
         false ->
-            FieldsData = [{Name, get_field(Field, LogEvent, Config)}
+            FieldsData = [{Name, get_field(Field, LogEvent)}
                           || {Name, Field} <- Fields],
             Data = systemd_protocol:encode([{"MESSAGE", Msg} | FieldsData]),
             ok = gen_udp:send(Socket, Path, 0, Data);
         true -> ok
     end.
 
-get_field(os_pid, _LogEvent, _Config) ->
+get_field(os_pid, _LogEvent) ->
     os:getpid();
-get_field(time, #{meta := #{time := Time}}, _Config) ->
+get_field(time, #{meta := #{time := Time}}) ->
     calendar:system_time_to_rfc3339(Time, [{unit, microsecond},
                                            {offset, "Z"}]);
-get_field(mfa, #{meta := #{mfa := {M, F, A}}}, _Config) ->
+get_field(mfa, #{meta := #{mfa := {M, F, A}}}) ->
     io_lib:format("~tp:~tp/~B", [M, F, A]);
-get_field(priority, #{level := Level}, _Config) ->
+get_field(priority, #{level := Level}) ->
     level_to_char(Level);
-get_field(level, #{level := Level}, _Config) ->
+get_field(level, #{level := Level}) ->
     atom_to_binary(Level, utf8);
-get_field(Metakey, #{meta := Meta}, _Config) ->
+get_field(Metakey, #{meta := Meta}) ->
     case get_meta(Metakey, Meta) of
         undefined -> "";
         Data -> to_string(Data)

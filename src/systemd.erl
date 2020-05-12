@@ -202,8 +202,6 @@ spawn_ready() ->
 %%      <dd>Returns state of the Watchdog process. Which either be integer
 %%      representing timeout in microseconds or `false' if Watchdog process is
 %%      disabled.</dd>
-%%      <dt>`watchdog(trigger) -> ok'</dt>
-%%      <dd>Trigger Watchdog timeout right despite current state.</dd>
 %%      <dt>`watchdog(enable) -> ok'</dt>
 %%      <dd>Enable Watchdog process. Watchdog process is automatically enabled
 %%      when needed after startup, so this will be only needed if user manually
