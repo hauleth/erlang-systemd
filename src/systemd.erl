@@ -78,11 +78,8 @@
 %%
 %% @since 0.4.0
 %% @end
--spec unset_env(Subsystem) -> ok | {error, term()}
-                                when Subsystem ::
-                                     notify |
-                                     watchdog |
-                                     listen_fds.
+-spec unset_env(Subsystem) -> ok when
+      Subsystem :: notify | watchdog | listen_fds.
 unset_env(notify) ->
     os:unsetenv(?NOTIFY_SOCKET),
     ok;
@@ -224,10 +221,10 @@ spawn_ready() ->
 %% @since 0.1.0
 %% @end
 -spec watchdog(state) -> sd_timeout()
-                         ; (trigger) -> ok
-                         ; (enable) -> ok
-                         ; (disable) -> ok
-                         ; (ping) -> ok.
+            ; (trigger) -> ok
+            ; (enable) -> ok
+            ; (disable) -> ok
+            ; (ping) -> ok.
 watchdog(ping) ->
     systemd:notify({watchdog, "1"});
 watchdog(trigger) ->
@@ -285,13 +282,32 @@ listen_fds() ->
             []
     end.
 
+%% @doc
+%% Send given file descriptors to supervisor for storage between VM restarts.
+%%
+%% == Warning ==
+%% This currently assumes that the currently used ABI is using 32-bit `int's.
+%% This is true at least for IA-32, x86-64, AArch64, AArch32, SPARC, OpenRISC,
+%% and RISC-V.
+%%
+%% @returns `ok' on success, `{error, bad_descriptor}' if any file descriptor in
+%% the passed list is invalid (isn't file desciptor or is closed).
+%%
+%% @since 0.6.0
+%% @end
+-spec store_fds([fd()]) -> ok | {error, term()}.
 store_fds(List) when is_list(List) ->
     {Names, Fds} = build_fds(List),
-    systemd_socket:send([
-                         {"FDSTORE", "1"},
+    systemd_socket:send([{"FDSTORE", "1"},
                          {"FDNAMES", lists:join($:, Names)}
                         ], 0, Fds).
 
+%% @doc
+%% Removes given named filedescriptors from the store.
+%%
+%% @since 0.6.0
+%% @end
+-spec clear_fds([unicode:chardata()]) -> ok.
 clear_fds(Names) ->
     systemd_socket:send([{"FDSTOREREMOVE", "1"},
                          {"FDNAMES", lists:join($:, Names)}
