@@ -56,19 +56,26 @@ Description=My Awesome App
 [Service]
 User=appuser
 Group=appgroup
+# This will allow using `systemd:notify/1` for informing the system supervisor
+# about application status.
 Type=notify
-# Important! This need to run in foreground and not fork.
-# Check documentation of your release tool.
+# Application need to start in foreground instead of forking into background,
+# otherwise it may be not correctly detected and system will try to start it
+# again.
 ExecStart=/path/to/my_app start
+# Enable watchdog process, which will expect messages in given timeframe,
+# otherwise it will restart the process as a defunct. It should be managed
+# automatically by `systemd` application in most cases and will send messages
+# twice as often as equested. You can force failure by using one of:
+#
+# - `systemd:watchdog(trigger)`
+# - `systemd:notify(watchdog_trigger)`
 WatchdogSec=10s
-NotifyAccess=main
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-(the `Type=notify` part is important)
 
 You can inform systemd about state of your application. To do so just call:
 
