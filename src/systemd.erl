@@ -26,13 +26,11 @@
     ready |
     stopping |
     reloading |
-    watchdog |
-    watchdog_trigger |
     {status, unicode:chardata()} |
     {errno, non_neg_integer()} |
     {buserror, unicode:chardata()} |
     {extend_timeout, {non_neg_integer(), erlang:time_unit()}} |
-    {unicode:chardata(), unicode:chardata()}.
+    {unicode:chardata() | atom(), unicode:chardata()}.
 -type sd_timeout() :: pos_integer().
 -type fd() :: integer() | {integer(), unicode:chardata()}.
 
@@ -48,6 +46,8 @@
          ready/0,
          watchdog/1,
          listen_fds/0,
+         store_fds/1,
+         clear_fds/1,
          booted/0]).
 
 -export([spawn_ready/0]).
@@ -65,10 +65,10 @@
 %%      (default). It is highly encouraged to unset these variables to prevent
 %%      them from being passed to subprocesses.</dd>
 %%      <dt>`unset_env(watchdog)'</dt>
-%%      <dd>Unset variables used by {@link watchdog/1. `watchdog/1'}. This call will
-%%      be done automatically when the `unset_env' application option is set
-%%      (default). It is highly encouraged to unset these variables to prevent
-%%      them from being passed to subprocesses.</dd>
+%%      <dd>Unset variables used by {@link watchdog/1. `watchdog/1'}. This call
+%%      will be done automatically when the `unset_env' application option is
+%%      set (default). It is highly encouraged to unset these variables
+%%      to prevent them from being passed to subprocesses.</dd>
 %%      <dt>`unset_env(listen_fds)'</dt>
 %%      <dd>Unset variables used by {@link listen_fds/0. `listen_fds/0'}. After
 %%      that all subsequent calls to `listen_fds' will return empty list. It is
@@ -78,7 +78,7 @@
 %%
 %% @since 0.4.0
 %% @end
--spec unset_env(Subsystem) -> ok
+-spec unset_env(Subsystem) -> ok | {error, term()}
                                 when Subsystem ::
                                      notify |
                                      watchdog |
@@ -118,14 +118,6 @@ unset_env(listen_fds) ->
 %%      <dt>`notify(reloading)'</dt>
 %%      <dd>Notify that application is reloading. It is left up to user what
 %%      is considered reloading and handle this call manually.</dd>
-%%      <dt>`notify(watchdog)'</dt>
-%%      <dd>Equivalent of `watchdog(ping)'.
-%%
-%%      See {@link watchdog/1. `watchdog/1'}.</dd>
-%%      <dt>`notify(watchdog_trigger)'</dt>
-%%      <dd>Equivalent of `watchdog(trigger)'.
-%%
-%%      See {@link watchdog/1. `watchdog/1'}.</dd>
 %%      <dt>`notify({errno, Errno :: integer()})'</dt>
 %%      <dd>Notify that application encountered `Errno' in C's `errno'
 %%      format.
@@ -133,7 +125,7 @@ unset_env(listen_fds) ->
 %%      Implemented only for feature parity.</dd>
 %%      <dt>`notify({buserror, Error :: unicode:chardata()})'</dt>
 %%      <dd>Notify about DBus error.</dd>
-%%      <dt>`notify({extend_timeout, {Time :: integer(), Unit :: erlang:time_unit()}})'</dt>
+%%      <dt>`notify({extend_timeout, {integer(), erlang:time_unit()}})'</dt>
 %%      <dd>Request extension of timeout for sending `notify(ready)'. This is
 %%      useful in case of setups that are taking more time than originally
 %%      expected, for example because of retries in connecting to external
@@ -142,20 +134,25 @@ unset_env(listen_fds) ->
 %%      This message must be sent within original timeout.</dd>
 %% </dl>
 %%
+%% == Return value ==
+%%
+%% Returns `ok' on success or if the message was ignored because there is no
+%% systemd notify socket. Only error that can be returned as `0.6.0' is when
+%% the file descriptors are passed and at least one of them is not correct file
+%% descriptor (for example it is closed), then this call will return `{error,
+%% bad_descriptor}'.
+%%
 %% @since 0.1.0
 %% @end
 -spec notify(State :: state() | [state()]) -> ok.
-notify(List) when is_list(List) ->
-    systemd_socket:send([normalize_state(State) || State <- List], 0, []);
+notify(States) when is_list(States) ->
+    systemd_socket:send([normalize_state(State) || State <- States], 0, []);
 notify(State) ->
     notify([State]).
 
-%% TODO: Add support for passing FDs to the supervisor
 normalize_state(ready) -> {ready, "1"};
 normalize_state(stopping) -> {stopping, "1"};
 normalize_state(reloading) -> {reloading, "1"};
-normalize_state(watchdog) -> {watchdog, "1"};
-normalize_state(watchdog_trigger) -> {watchdog, <<"trigger">>};
 normalize_state({status, Status}) -> {"STATUS", Status};
 normalize_state({errno, Errno})
   when is_integer(Errno) ->
@@ -231,16 +228,16 @@ spawn_ready() ->
                          ; (enable) -> ok
                          ; (disable) -> ok
                          ; (ping) -> ok.
+watchdog(ping) ->
+    systemd:notify({watchdog, "1"});
+watchdog(trigger) ->
+    systemd:notify({watchdog, "trigger"});
 watchdog(state) ->
     gen_server:call(?WATCHDOG, state);
-watchdog(trigger) ->
-    gen_server:call(?WATCHDOG, trigger);
 watchdog(enable) ->
     gen_server:call(?WATCHDOG, enable);
 watchdog(disable) ->
-    gen_server:call(?WATCHDOG, disable);
-watchdog(ping) ->
-    gen_server:call(?WATCHDOG, ping).
+    gen_server:call(?WATCHDOG, disable).
 
 %% ----------------------------------------------------------------------------
 
@@ -288,6 +285,18 @@ listen_fds() ->
             []
     end.
 
+store_fds(List) when is_list(List) ->
+    {Names, Fds} = build_fds(List),
+    systemd_socket:send([
+                         {"FDSTORE", "1"},
+                         {"FDNAMES", lists:join($:, Names)}
+                        ], 0, Fds).
+
+clear_fds(Names) ->
+    systemd_socket:send([{"FDSTOREREMOVE", "1"},
+                         {"FDNAMES", lists:join($:, Names)}
+                        ], 0, []).
+
 check_listen_pid() ->
     os:getenv(?LISTEN_PID) == os:getpid().
 
@@ -312,9 +321,19 @@ generate_fds(Count, Names) ->
 
 generate_fds(_, 0, _, Agg) -> lists:reverse(Agg);
 generate_fds(Fd, Count, [Name | Names], Agg) ->
-    generate_fds(Fd + 1, Count - 1, Names, [fd(Fd, Name) | Agg]);
+    generate_fds(Fd + 1, Count - 1, Names, [decode_fd(Fd, Name) | Agg]);
 generate_fds(Fd, Count, [], Agg) ->
     generate_fds(Fd + 1, Count - 1, [], [Fd | Agg]).
 
-fd(Fd, "") -> Fd;
-fd(Fd, Name) -> {Fd, Name}.
+decode_fd(Fd, "") -> Fd;
+decode_fd(Fd, Name) -> {Fd, Name}.
+
+build_fds(List) ->
+    {Names, FDs} = build_fds(List, {[], []}),
+    {lists:reverse(Names), lists:reverse(FDs)}.
+
+build_fds([], Acc) -> Acc;
+build_fds([{Fd, Name} | Rest], {ANames, AFds}) when is_integer(Fd) ->
+    build_fds(Rest, {[Name | ANames], [Fd | AFds]});
+build_fds([Fd | Rest], {ANames, AFds}) when is_integer(Fd) ->
+    build_fds(Rest, {["" | ANames], [Fd | AFds]}).

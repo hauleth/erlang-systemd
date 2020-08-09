@@ -42,7 +42,8 @@
 %% `systemd_journal_h'} handler (which <b>SHOULD NOT</b> be used with this
 %% formatter).
 %%
-%% To disable this behaviour set `auto_formatter' option for `systemd' to `false'.
+%% To disable this behaviour set `auto_formatter' option for `systemd' to
+%% `false'.
 %%
 %% == Example ==
 %%
@@ -115,7 +116,8 @@ format_level(debug)     -> ?SD_DEBUG.
 auto_install() ->
     case get_journal_stream() of
         {Dev, Inode} ->
-            [auto_install(Dev, Inode, Config) || Config <- logger:get_handler_config()];
+            [auto_install(Dev, Inode, Config)
+             || Config <- logger:get_handler_config()];
         _ -> ok
     end,
     ok.

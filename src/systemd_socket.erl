@@ -56,11 +56,14 @@ handle_call({send, Message, Pid, Fds}, _Ref, {Socket, Address}=State) ->
     MsgHdr = #{
       addr => Addr,
       iov => Message,
-      ctrl => [],
-      flags => encode_fds(Fds) ++ encode_auth(Pid)
+      ctrl => encode_fds(Fds) ++ encode_auth(Pid)
      },
-    socket:sendmsg(Socket, MsgHdr),
-    {reply, ok, State};
+    Resp = case socket:sendmsg(Socket, MsgHdr) of
+               ok -> ok;
+               {error, ebadf} -> {error, bad_descriptor};
+               {error, _} = Error -> Error
+           end,
+    {reply, Resp, State};
 handle_call(_Msg, _Ref, []) ->
     {reply, ok, []}.
 
@@ -77,7 +80,7 @@ encode_auth(_) ->
 
 encode_fds([]) -> [];
 encode_fds(Fds) when is_list(Fds) ->
-    Binary = << <<Fd:32/native-integer>> || Fd <- Fds >>,
+    Binary = << <<Fd:32/native-integer>> || Fd <- Fds>>,
     [#{level => socket,
        type => rights,
        data => Binary}].

@@ -50,9 +50,9 @@
 %%       <dd>Function that takes `Prefix' and Logger's report and returns list
 %%       of 2-ary tuples  where first one MUST contain only uppercase ASCII
 %%       letters, digits and underscore characters, and must not start with
-%%       underscore. Field name and second one is field value in form of `iolist()'.
-%%       It is important to note that value can contain any data, and does not
-%%       need to be in any encoding; it can even be binary.
+%%       underscore. Field name and second one is field value in form of
+%%       `iolist()'.  It is important to note that value can contain any data,
+%%       and does not need to be in any encoding; it can even be binary.
 %%
 %%       === Example ===
 %%
@@ -99,7 +99,8 @@
 %%      <dt>`priority'</dt>
 %%      <dd>Log level presented as decimal representation of syslog level.</dd>
 %%      <dt>`os_pid'</dt>
-%%      <dd>OS PID for current Erlang process. This is <b>NOT Erlang PID</b>.</dd>
+%%      <dd>OS PID for current Erlang process. This is <b>NOT Erlang PID</b>.
+%%      </dd>
 %%      <dt>`mfa'</dt>
 %%      <dd>Calling function presented in form `Module:Function/Arity'.</dd>
 %%      <dt>`time'</dt>
