@@ -73,14 +73,14 @@ notify_socket() ->
                 false ->
                     [];
                 [$@ | AbstractPath] ->
-                    {local, [0 | AbstractPath]};
+                    [0 | AbstractPath];
                 Path ->
                     case file:read_file_info(Path) of
                         {error, _Error} ->
                             [];
                         {ok, #file_info{access=Access}}
                           when Access =:= write; Access =:= read_write ->
-                            {local, Path}
+                            Path
                     end
             end,
     unset(notify),
