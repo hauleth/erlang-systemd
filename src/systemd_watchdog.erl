@@ -22,36 +22,40 @@
 -behaviour(gen_server).
 
 -include_lib("kernel/include/logger.hrl").
+
 -include("systemd_internal.hrl").
 
--export([start_link/1,
-         init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2]).
+-export([
+    start_link/1,
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2
+]).
 
--record(state, {timeout, enabled=true}).
+-record(state, {timeout, enabled = true}).
 
 start_link(Config) ->
     gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Config, []).
 
 init({Enabled, Timeout}) ->
-    State = #state{enabled=Enabled, timeout=Timeout},
+    State = #state{enabled = Enabled, timeout = Timeout},
     notify(State),
     {ok, State}.
 
-handle_call(enable, _Ref, #state{timeout=T}=State)
-  when is_integer(T), T > 0 ->
-    NewState = State#state{enabled=true},
+handle_call(enable, _Ref, #state{timeout = T} = State) when
+    is_integer(T), T > 0
+->
+    NewState = State#state{enabled = true},
     notify(NewState),
     {reply, ok, NewState};
 handle_call(enable, _Ref, State) ->
     {reply, ok, State};
 handle_call(disable, _Ref, State) ->
-    {reply, ok, State#state{enabled=false}};
+    {reply, ok, State#state{enabled = false}};
 handle_call(state, _Ref, State) ->
     case State of
-        #state{enabled=true, timeout=Timeout} ->
+        #state{enabled = true, timeout = Timeout} ->
             {reply, Timeout, State};
         _ ->
             {reply, false, State}
@@ -64,11 +68,33 @@ handle_info(keepalive, State) ->
     notify(State),
     {noreply, State}.
 
-notify(#state{enabled=true, timeout=Timeout}) when
-      is_integer(Timeout),
-      Timeout > 2 ->
+notify(#state{enabled = true, timeout = Timeout}) when
+    is_integer(Timeout), Timeout > 2
+->
     {ok, Scale} = application:get_env(systemd, watchdog_scale),
-    systemd:notify({watchdog, "1"}),
+    Check =
+        case application:get_env(systemd, watchdog_check) of
+            {ok, {M, F, A}} -> fun() -> apply(M, F, A) end;
+            {ok, F} when is_function(F, 0) -> F;
+            undefined -> fun() -> true end
+        end,
+    try Check() of
+        true ->
+            ?LOG_DEBUG("Watchdog check is healthy"),
+            systemd:notify({watchdog, "1"});
+        false ->
+            ?LOG_WARNING("Watchdog check is unhealthy");
+        Other ->
+            ?LOG_ERROR("Watchdog check is returned (boolean was expected) ~p", [
+                Other
+            ])
+    catch
+        Class:Exception:_Stacktrace ->
+            ?LOG_ERROR("Watchdog healthcheck failed with ~p (~p)", [
+                Class,
+                Exception
+            ])
+    end,
     erlang:send_after(Timeout div Scale, self(), keepalive);
 notify(_State) ->
     ok.

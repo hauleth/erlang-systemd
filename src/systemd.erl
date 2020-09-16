@@ -216,6 +216,12 @@ spawn_ready() ->
 %%      required to prevent any jitter.
 %%
 %%      Defaults to `2' which will send messages twice as often as needed.</dd>
+%%      <dt>`watchdog_check'</dt>
+%%      <dd>Function (specified as 0-ary function or `mfa()') that will be ran
+%%      before pinging watchdog process. Such function should return `true' if
+%%      the application is in functioning state and `false' otherwise.
+%%
+%%      Defaults to function that always return `true'.</dd>
 %% </dl>
 %%
 %% @since 0.1.0
