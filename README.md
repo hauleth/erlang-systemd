@@ -66,7 +66,7 @@ ExecStart=/path/to/my_app start
 # Enable watchdog process, which will expect messages in given timeframe,
 # otherwise it will restart the process as a defunct. It should be managed
 # automatically by `systemd` application in most cases and will send messages
-# twice as often as equested.
+# twice as often as requested.
 #
 # You can force failure by using `systemd:watchdog(trigger)` or manually ping
 # systemd watchdog via `systemd:watchdog(ping)`.
