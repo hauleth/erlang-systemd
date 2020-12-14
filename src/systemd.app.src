@@ -1,25 +1,26 @@
-{application, systemd,
- [{description, "systemd integration for Erlang applications"},
-  {vsn, git},
-  {registered,
-   [systemd_socket,
-    systemd_sup,
-    systemd_watchdog]},
-  {applications,
-   [kernel,
-    stdlib
-   ]},
-  {mod, {systemd_app, []}},
-  {env,[{unset_env, true},
+{application, systemd, [
+    {description, "systemd integration for Erlang applications"},
+    {vsn, git},
+    {registered, [
+        systemd_socket,
+        systemd_sup,
+        systemd_watchdog
+    ]},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {mod, {systemd_app, []}},
+    {env, [
+        {unset_env, true},
         {auto_formatter, true},
         {watchdog_scale, 2},
         {logger, [
-                  {handler, systemd_journal, systemd_journal_h, #{}}
-                 ]}
-       ]},
-  {modules, []},
+            {handler, systemd_journal, systemd_journal_h, #{}}
+        ]}
+    ]},
+    {modules, []},
 
-  {licenses, ["Apache-2.0"]},
-  {links,
-   [{"GitHub", "https://github.com/hauleth/erlang-systemd"}]}
- ]}.
+    {licenses, ["Apache-2.0"]},
+    {links, [{"GitHub", "https://github.com/hauleth/erlang-systemd"}]}
+]}.

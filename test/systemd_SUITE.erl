@@ -5,7 +5,17 @@
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("common_test/include/ct.hrl").
 
-all() -> [notify, watchdog, ready, listen_fds, socket, fds].
+-import(systemd_test_utils, [
+    socket_path/1,
+    start_with_socket/1,
+    start_with_path/1,
+    stop/1,
+    flush/1,
+    recvmsg/1,
+    recv/1
+]).
+
+all() -> [notify, ready, listen_fds, socket, fds].
 
 init_per_testcase(Name, Config0) ->
     PrivDir = ?config(priv_dir, Config0),
@@ -19,19 +29,12 @@ init_per_testcase(Name, Config0) ->
         false -> Config1
     end.
 
-%% This hack is needed to reduce length of the socket path which is limited to
-%% 104-108 characters (depends on the OS).
--spec socket_path(PrivDir :: file:name()) -> string().
-socket_path(PrivDir0) ->
-    {ok, Cwd} = file:get_cwd(),
-    PrivDir = string:prefix(PrivDir0, Cwd),
-    erlang:binary_to_list(iolist_to_binary([".", PrivDir, "systemd.sock"])).
-
 end_per_testcase(Name, Config0) ->
-    Config = case erlang:function_exported(?MODULE, Name, 2) of
-                 true -> ?MODULE:Name(finish, Config0);
-                 false -> Config0
-             end,
+    Config =
+        case erlang:function_exported(?MODULE, Name, 2) of
+            true -> ?MODULE:Name(finish, Config0);
+            false -> Config0
+        end,
 
     _ = application:stop(systemd),
     _ = socket:close(?config(socket, Config)),
@@ -80,173 +83,6 @@ notify(Config) ->
     {ok, <<"READY=1\n">>} = recv(Socket),
     ok.
 
-watchdog(init, Config) -> Config;
-watchdog(finish, Config) ->
-    os:unsetenv("WATCHDOG_USEC"),
-    os:unsetenv("WATCHDOG_PID"),
-    Config.
-
-watchdog(Config) ->
-    Socket = ?config(socket, Config),
-
-    Timeout = 200,
-    Timeout0 = erlang:convert_time_unit(Timeout,
-                                        millisecond,
-                                        microsecond),
-    TimeoutList = integer_to_list(Timeout0),
-
-    % -------------------------------------------------------------------------
-    ct:log("Watchdog sends messages when WATCHDOG_USEC is set"),
-    os:putenv("WATCHDOG_USEC", TimeoutList),
-    ok = start_with_socket(Socket),
-    ?assertEqual(Timeout, systemd:watchdog(state)),
-    ct:sleep(300),
-
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Watchdog do not send messages when WATCHDOG_PID mismatch"),
-    os:putenv("WATCHDOG_PID", "foo"),
-    os:putenv("WATCHDOG_USEC", TimeoutList),
-    ok = start_with_socket(Socket),
-    false = systemd:watchdog(state),
-    ct:sleep(300),
-
-    ok = empty(Socket),
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Watchdog send messages when WATCHDOG_PID match"),
-    os:putenv("WATCHDOG_PID", os:getpid()),
-    os:putenv("WATCHDOG_USEC", TimeoutList),
-    ok = start_with_socket(Socket),
-    Timeout = systemd:watchdog(state),
-    ct:sleep(300),
-
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Enabling invalid Watchdog does nothing"),
-    os:putenv("WATCHDOG_USEC", "0"),
-    ok = start_with_socket(Socket),
-    false = systemd:watchdog(state),
-    ok = empty(Socket),
-
-    systemd:watchdog(enable),
-    false = systemd:watchdog(state),
-    ok = empty(Socket),
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Watchdog do not send messages when WATCHDOG_USEC is zero"),
-    os:putenv("WATCHDOG_USEC", "0"),
-    ok = start_with_socket(Socket),
-    false = systemd:watchdog(state),
-    ct:sleep(300),
-    ok = empty(Socket),
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Watchdog do not send messages when WATCHDOG_USEC is non integer"),
-    os:putenv("WATCHDOG_USEC", "foo"),
-    ok = start_with_socket(Socket),
-    false = systemd:watchdog(state),
-    ct:sleep(300),
-    ok = empty(Socket),
-    ok = stop(Config),
-
-    os:putenv("WATCHDOG_USEC", "1.0"),
-    ok = start_with_socket(Socket),
-    false = systemd:watchdog(state),
-    ct:sleep(300),
-    ok = empty(Socket),
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Watchdog control functions"),
-    os:putenv("WATCHDOG_USEC", TimeoutList),
-    ok = start_with_socket(Socket),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    flush(Socket),
-
-    ct:log("-> state enabled"),
-    ?assertEqual(Timeout, systemd:watchdog(state)),
-    ct:sleep(300),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    flush(Socket),
-
-    ct:log("-> disable"),
-    ok = systemd:watchdog(disable),
-    ct:sleep(300),
-    ok = empty(Socket),
-
-    ct:log("-> state disabled"),
-    ?assertEqual(false, systemd:watchdog(state)),
-    ct:sleep(300),
-    ok = empty(Socket),
-
-    ct:log("-> ping disabled"),
-    ok = systemd:watchdog(ping),
-    ct:sleep(300),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    flush(Socket),
-
-    ct:log("-> enable"),
-    ok = systemd:watchdog(enable),
-    ct:sleep(300),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    flush(Socket),
-
-    ct:log("-> trigger"),
-    ok = systemd:watchdog(trigger),
-    {ok, <<"WATCHDOG=trigger\n">>} = recv(Socket),
-    flush(Socket),
-
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Watchdog process send messages after restart"),
-    os:putenv("WATCHDOG_PID", os:getpid()),
-    os:putenv("WATCHDOG_USEC", TimeoutList),
-    ok = start_with_socket(Socket),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    ok = empty(Socket),
-    gen_server:stop(systemd_watchdog, error, 100),
-    {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
-    ok = empty(Socket),
-
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("By default unsets variables"),
-    os:putenv("WATCHDOG_PID", os:getpid()),
-    os:putenv("WATCHDOG_USEC", TimeoutList),
-    ok = start_with_socket(Socket),
-    false = os:getenv("WATCHDOG_PID"),
-    false = os:getenv("WATCHDOG_USEC"),
-
-    ok = stop(Config),
-
-    % % -------------------------------------------------------------------------
-    ct:log("Do not unset env when unset_env is false"),
-    os:putenv("WATCHDOG_PID", os:getpid()),
-    os:putenv("WATCHDOG_USEC", TimeoutList),
-    ok = application:set_env(systemd, unset_env, false),
-    ok = start_with_socket(Socket),
-    ?assertEqual(os:getpid(), os:getenv("WATCHDOG_PID")),
-    TimeoutList = os:getenv("WATCHDOG_USEC"),
-    ok = application:set_env(systemd, unset_env, true),
-
-    ok = stop(Config),
-
-    ok.
-
 ready(init, Config) ->
     ok = start_with_socket(?config(socket, Config)),
     Config;
@@ -261,8 +97,8 @@ ready(Config) ->
 
     ok.
 
-
-listen_fds(init, Config) -> Config;
+listen_fds(init, Config) ->
+    Config;
 listen_fds(finish, Config) ->
     os:unsetenv("LISTEN_PID"),
     os:unsetenv("LISTEN_FDS"),
@@ -276,7 +112,9 @@ listen_fds(_Config) ->
     systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
-    ct:log("When no LISTEN_PID environment variable is set it returns empty list"),
+    ct:log(
+        "When no LISTEN_PID environment variable is set it returns empty list"
+    ),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "3"),
     ?assertEqual([], systemd:listen_fds()),
@@ -291,7 +129,9 @@ listen_fds(_Config) ->
     systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
-    ct:log("When LISTEN_PID match returned list has LISTEN_FDS amount of entries"),
+    ct:log(
+        "When LISTEN_PID match returned list has LISTEN_FDS amount of entries"
+    ),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     ?assertEqual(3, length(systemd:listen_fds())),
@@ -407,14 +247,29 @@ fds(_, Config) ->
 fds(Config) ->
     Socket = ?config(socket, Config),
     ok = systemd:store_fds([1]),
-    ?assertMatch({ok, #{iov := [<<"FDSTORE=1\n">>],
-                        ctrl := [#{type := rights}]}}, recvmsg(Socket)),
+    ?assertMatch(
+        {ok, #{
+            iov := [<<"FDSTORE=1\n">>],
+            ctrl := [#{type := rights}]
+        }},
+        recvmsg(Socket)
+    ),
     ok = systemd:store_fds([{1, "foo"}]),
-    ?assertMatch({ok, #{iov := [<<"FDSTORE=1\nFDNAMES=foo\n">>],
-                        ctrl := [#{type := rights}]}}, recvmsg(Socket)),
+    ?assertMatch(
+        {ok, #{
+            iov := [<<"FDSTORE=1\nFDNAMES=foo\n">>],
+            ctrl := [#{type := rights}]
+        }},
+        recvmsg(Socket)
+    ),
     ok = systemd:store_fds([1, {2, "foo"}]),
-    ?assertMatch({ok, #{iov := [<<"FDSTORE=1\nFDNAMES=:foo\n">>],
-                        ctrl := [#{type := rights}]}}, recvmsg(Socket)),
+    ?assertMatch(
+        {ok, #{
+            iov := [<<"FDSTORE=1\nFDNAMES=:foo\n">>],
+            ctrl := [#{type := rights}]
+        }},
+        recvmsg(Socket)
+    ),
     {error, bad_descriptor} = systemd:store_fds([999]),
     ok = empty(Socket),
 
@@ -423,37 +278,10 @@ fds(Config) ->
 
     ok.
 
-start_with_socket(Socket) ->
-    {ok, #{path := Path}} = socket:sockname(Socket),
-    start_with_path(Path).
-
-start_with_path(Path) ->
-    ct:log("Start app with socket at ~p", [Path]),
-    os:putenv("NOTIFY_SOCKET", Path),
-    {ok, _} = application:ensure_all_started(systemd),
-    ok.
-
-stop(Config) ->
-    ok = application:stop(systemd),
-    ok = flush(?config(socket, Config)),
-    ok.
-
-recv(S) ->
-    socket:recv(S, 0, 1000).
-
-recvmsg(S) ->
-    socket:recvmsg(S, 0, 1000).
-
 empty(S) ->
     case socket:recv(S, 0, 0) of
         {ok, <<>>} -> ok;
         {error, timeout} -> ok;
         {ok, Msg} -> {error, {received, Msg}};
         {error, _} = Error -> Error
-    end.
-
-flush(S) ->
-    case socket:recv(S, 0, 0) of
-        {ok, _} -> flush(S);
-        _ -> ok
     end.
