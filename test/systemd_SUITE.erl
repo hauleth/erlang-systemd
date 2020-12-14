@@ -5,13 +5,15 @@
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("common_test/include/ct.hrl").
 
--import(systemd_test_utils, [socket_path/1,
-                             start_with_socket/1,
-                             start_with_path/1,
-                             stop/1,
-                             flush/1,
-                             recvmsg/1,
-                             recv/1]).
+-import(systemd_test_utils, [
+    socket_path/1,
+    start_with_socket/1,
+    start_with_path/1,
+    stop/1,
+    flush/1,
+    recvmsg/1,
+    recv/1
+]).
 
 all() -> [notify, ready, listen_fds, socket, fds].
 
@@ -28,10 +30,11 @@ init_per_testcase(Name, Config0) ->
     end.
 
 end_per_testcase(Name, Config0) ->
-    Config = case erlang:function_exported(?MODULE, Name, 2) of
-                 true -> ?MODULE:Name(finish, Config0);
-                 false -> Config0
-             end,
+    Config =
+        case erlang:function_exported(?MODULE, Name, 2) of
+            true -> ?MODULE:Name(finish, Config0);
+            false -> Config0
+        end,
 
     _ = application:stop(systemd),
     _ = socket:close(?config(socket, Config)),
@@ -94,8 +97,8 @@ ready(Config) ->
 
     ok.
 
-
-listen_fds(init, Config) -> Config;
+listen_fds(init, Config) ->
+    Config;
 listen_fds(finish, Config) ->
     os:unsetenv("LISTEN_PID"),
     os:unsetenv("LISTEN_FDS"),
@@ -109,7 +112,9 @@ listen_fds(_Config) ->
     systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
-    ct:log("When no LISTEN_PID environment variable is set it returns empty list"),
+    ct:log(
+        "When no LISTEN_PID environment variable is set it returns empty list"
+    ),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "3"),
     ?assertEqual([], systemd:listen_fds()),
@@ -124,7 +129,9 @@ listen_fds(_Config) ->
     systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
-    ct:log("When LISTEN_PID match returned list has LISTEN_FDS amount of entries"),
+    ct:log(
+        "When LISTEN_PID match returned list has LISTEN_FDS amount of entries"
+    ),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     ?assertEqual(3, length(systemd:listen_fds())),
@@ -240,14 +247,29 @@ fds(_, Config) ->
 fds(Config) ->
     Socket = ?config(socket, Config),
     ok = systemd:store_fds([1]),
-    ?assertMatch({ok, #{iov := [<<"FDSTORE=1\n">>],
-                        ctrl := [#{type := rights}]}}, recvmsg(Socket)),
+    ?assertMatch(
+        {ok, #{
+            iov := [<<"FDSTORE=1\n">>],
+            ctrl := [#{type := rights}]
+        }},
+        recvmsg(Socket)
+    ),
     ok = systemd:store_fds([{1, "foo"}]),
-    ?assertMatch({ok, #{iov := [<<"FDSTORE=1\nFDNAMES=foo\n">>],
-                        ctrl := [#{type := rights}]}}, recvmsg(Socket)),
+    ?assertMatch(
+        {ok, #{
+            iov := [<<"FDSTORE=1\nFDNAMES=foo\n">>],
+            ctrl := [#{type := rights}]
+        }},
+        recvmsg(Socket)
+    ),
     ok = systemd:store_fds([1, {2, "foo"}]),
-    ?assertMatch({ok, #{iov := [<<"FDSTORE=1\nFDNAMES=:foo\n">>],
-                        ctrl := [#{type := rights}]}}, recvmsg(Socket)),
+    ?assertMatch(
+        {ok, #{
+            iov := [<<"FDSTORE=1\nFDNAMES=:foo\n">>],
+            ctrl := [#{type := rights}]
+        }},
+        recvmsg(Socket)
+    ),
     {error, bad_descriptor} = systemd:store_fds([999]),
     ok = empty(Socket),
 

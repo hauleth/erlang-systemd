@@ -5,48 +5,66 @@
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("common_test/include/ct.hrl").
 
--define(assertReceived(Message), receive
-                                     Message -> ok
-                                 after
-                                     0 -> ct:fail("Expected message ~p",
-                                                  [Message])
-                                 end).
+-define(assertReceived(Message),
+    receive
+        Message -> ok
+    after 0 ->
+        ct:fail(
+            "Expected message ~p",
+            [Message]
+        )
+    end
+).
 
--import(systemd_test_utils, [socket_path/1,
-                             start_with_socket/1,
-                             stop/1,
-                             flush/1,
-                             recv/1]).
+-import(systemd_test_utils, [
+    socket_path/1,
+    start_with_socket/1,
+    stop/1,
+    flush/1,
+    recv/1
+]).
 
-all() -> [env_usec_set,
-          env_pid_mismatch,
-          env_pid_match,
-          invalid,
-          env_usec_is_zero,
-          env_usec_is_non_int,
-          state_control,
-          server_restart,
-          unset_env,
-          {group, func_check},
-          {group, mfa_check}
-         ].
+all() ->
+    [
+        env_usec_set,
+        env_pid_mismatch,
+        env_pid_match,
+        invalid,
+        env_usec_is_zero,
+        env_usec_is_non_int,
+        state_control,
+        server_restart,
+        unset_env,
+        {group, func_check},
+        {group, mfa_check}
+    ].
 
 groups() ->
-    FuncTests = [check_func_true,
-                 check_func_false,
-                 check_func_non_bool,
-                 check_func_failure],
-    [{func_check, [], FuncTests},
-     {mfa_check, [], FuncTests}].
+    FuncTests = [
+        check_func_true,
+        check_func_false,
+        check_func_non_bool,
+        check_func_failure
+    ],
+    [
+        {func_check, [], FuncTests},
+        {mfa_check, [], FuncTests}
+    ].
 
 init_per_group(mfa_check, Config) ->
-    [{func, fun(Pid, Ret) ->
-                    fun() -> check(Pid, Ret) end
-            end} | Config];
+    [
+        {func, fun(Pid, Ret) ->
+            fun() -> check(Pid, Ret) end
+        end}
+        | Config
+    ];
 init_per_group(func_check, Config) ->
-    [{func, fun(Pid, Ret) ->
-                    {?MODULE, check, [Pid, Ret]}
-            end} | Config].
+    [
+        {func, fun(Pid, Ret) ->
+            {?MODULE, check, [Pid, Ret]}
+        end}
+        | Config
+    ].
 
 check(Pid, Cb) when is_function(Cb) ->
     check(Pid, Cb());
@@ -60,17 +78,20 @@ init_per_testcase(_Name, Config0) ->
     PrivDir = ?config(priv_dir, Config0),
     Path = socket_path(PrivDir),
     Self = self(),
-    Config1 = case ?config(func, Config0) of
-                  Func0 when is_function(Func0, 2) ->
-                      Func = fun(Ret) -> Func0(Self, Ret) end,
-                      [{func, Func} | Config0];
-                  _ ->
-                      Config0
-              end,
+    Config1 =
+        case ?config(func, Config0) of
+            Func0 when is_function(Func0, 2) ->
+                Func = fun(Ret) -> Func0(Self, Ret) end,
+                [{func, Func} | Config0];
+            _ ->
+                Config0
+        end,
     Timeout = 200,
-    Timeout0 = erlang:convert_time_unit(Timeout,
-                                        millisecond,
-                                        microsecond),
+    Timeout0 = erlang:convert_time_unit(
+        Timeout,
+        millisecond,
+        microsecond
+    ),
     os:putenv("WATCHDOG_PID", os:getpid()),
     os:putenv("WATCHDOG_USEC", integer_to_list(Timeout0)),
     {ok, Socket} = socket:open(local, dgram, default),

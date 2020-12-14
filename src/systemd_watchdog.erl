@@ -86,18 +86,30 @@ notify(#state{enabled = true, timeout = Timeout}) when
         false ->
             ?LOG_WARNING("Watchdog check is unhealthy");
         Other ->
-            ?LOG_ERROR(#{type => wrong_ret,
-                         ret => Other},
-                       #{report_cb => fun ?MODULE:report_cb/1,
-                         watchdog_timeout => Timeout})
+            ?LOG_ERROR(
+                #{
+                    type => wrong_ret,
+                    ret => Other
+                },
+                #{
+                    report_cb => fun ?MODULE:report_cb/1,
+                    watchdog_timeout => Timeout
+                }
+            )
     catch
         Class:Exception:Stacktrace ->
-            ?LOG_ERROR(#{type => healthcheck_failed,
-                         class => Class,
-                         exception => Exception,
-                         stacktrace => Stacktrace},
-                       #{report_cb => fun ?MODULE:report_cb/1,
-                         watchdog_timeout => Timeout})
+            ?LOG_ERROR(
+                #{
+                    type => healthcheck_failed,
+                    class => Class,
+                    exception => Exception,
+                    stacktrace => Stacktrace
+                },
+                #{
+                    report_cb => fun ?MODULE:report_cb/1,
+                    watchdog_timeout => Timeout
+                }
+            )
     end,
     erlang:send_after(Timeout div Scale, self(), keepalive);
 notify(_State) ->
@@ -106,8 +118,10 @@ notify(_State) ->
 %% @hidden
 report_cb(#{type := wrong_ret, ret := Ret}) ->
     {"Watchdog check returned ~p (boolean was expected)", [Ret]};
-report_cb(#{type := healthcheck_failed,
-            class := Class,
-            exception := Exception,
-            stacktrace := _Stacktrace}) ->
+report_cb(#{
+    type := healthcheck_failed,
+    class := Class,
+    exception := Exception,
+    stacktrace := _Stacktrace
+}) ->
     {"Watchdog healthcheck failed with ~p (~p)", [Class, Exception]}.

@@ -2,13 +2,15 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--export([socket_path/1,
-         start_with_socket/1,
-         start_with_path/1,
-         stop/1,
-         flush/1,
-         recv/1,
-         recvmsg/1]).
+-export([
+    socket_path/1,
+    start_with_socket/1,
+    start_with_path/1,
+    stop/1,
+    flush/1,
+    recv/1,
+    recvmsg/1
+]).
 
 %% This hack is needed to reduce length of the socket path which is limited to
 %% 104-108 characters (depends on the OS).

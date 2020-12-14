@@ -23,32 +23,38 @@
 -module(systemd).
 
 -type state() ::
-    ready |
-    stopping |
-    reloading |
-    {status, unicode:chardata()} |
-    {errno, non_neg_integer()} |
-    {buserror, unicode:chardata()} |
-    {extend_timeout, {non_neg_integer(), erlang:time_unit()}} |
-    {unicode:chardata() | atom(), unicode:chardata()}.
+    ready
+    | stopping
+    | reloading
+    | {status, unicode:chardata()}
+    | {errno, non_neg_integer()}
+    | {buserror, unicode:chardata()}
+    | {extend_timeout, {non_neg_integer(), erlang:time_unit()}}
+    | {unicode:chardata() | atom(), unicode:chardata()}.
+
 -type sd_timeout() :: pos_integer().
 -type fd() :: integer() | {integer(), unicode:chardata()}.
 
--export_type([state/0,
-              fd/0,
-              sd_timeout/0]).
+-export_type([
+    state/0,
+    fd/0,
+    sd_timeout/0
+]).
 
 -include_lib("kernel/include/file.hrl").
+
 -include("systemd_internal.hrl").
 
--export([unset_env/1,
-         notify/1,
-         ready/0,
-         watchdog/1,
-         listen_fds/0,
-         store_fds/1,
-         clear_fds/1,
-         booted/0]).
+-export([
+    unset_env/1,
+    notify/1,
+    ready/0,
+    watchdog/1,
+    listen_fds/0,
+    store_fds/1,
+    clear_fds/1,
+    booted/0
+]).
 
 -export([spawn_ready/0]).
 
@@ -79,7 +85,7 @@
 %% @since 0.4.0
 %% @end
 -spec unset_env(Subsystem) -> ok when
-      Subsystem :: notify | watchdog | listen_fds.
+    Subsystem :: notify | watchdog | listen_fds.
 unset_env(notify) ->
     os:unsetenv(?NOTIFY_SOCKET),
     ok;
@@ -147,16 +153,19 @@ notify(States) when is_list(States) ->
 notify(State) ->
     notify([State]).
 
-normalize_state(ready) -> {ready, "1"};
-normalize_state(stopping) -> {stopping, "1"};
-normalize_state(reloading) -> {reloading, "1"};
-normalize_state({status, Status}) -> {"STATUS", Status};
-normalize_state({errno, Errno})
-  when is_integer(Errno) ->
+normalize_state(ready) ->
+    {ready, "1"};
+normalize_state(stopping) ->
+    {stopping, "1"};
+normalize_state(reloading) ->
+    {reloading, "1"};
+normalize_state({status, Status}) ->
+    {"STATUS", Status};
+normalize_state({errno, Errno}) when is_integer(Errno) ->
     {"ERRNO", integer_to_binary(Errno)};
-normalize_state({buserror, Error}) -> {"BUSERROR", Error};
-normalize_state({extend_timeout, {Time, Unit}})
-  when is_integer(Time) ->
+normalize_state({buserror, Error}) ->
+    {"BUSERROR", Error};
+normalize_state({extend_timeout, {Time, Unit}}) when is_integer(Time) ->
     Microsecs = erlang:convert_time_unit(Time, Unit, microsecond),
     {"EXTEND_TIMEOUT_USEC", integer_to_binary(Microsecs)};
 normalize_state({_, _} = Msg) ->
@@ -172,10 +181,12 @@ normalize_state({_, _} = Msg) ->
 %% ready (usually at the end).
 %% @end
 ready() ->
-    #{id => systemd_watchdog_ready,
-      start => {?MODULE, spawn_ready, []},
-      restart => temporary,
-      shutdown => brutal_kill}.
+    #{
+        id => systemd_watchdog_ready,
+        start => {?MODULE, spawn_ready, []},
+        restart => temporary,
+        shutdown => brutal_kill
+    }.
 
 %% @hidden helper for `ready/0' function that spawn process that notify about
 %% application readiness.
@@ -226,11 +237,12 @@ spawn_ready() ->
 %%
 %% @since 0.1.0
 %% @end
--spec watchdog(state) -> sd_timeout()
-            ; (trigger) -> ok
-            ; (enable) -> ok
-            ; (disable) -> ok
-            ; (ping) -> ok.
+-spec watchdog
+    (state) -> sd_timeout();
+    (trigger) -> ok;
+    (enable) -> ok;
+    (disable) -> ok;
+    (ping) -> ok.
 watchdog(ping) ->
     systemd:notify({watchdog, "1"});
 watchdog(trigger) ->
@@ -304,9 +316,14 @@ listen_fds() ->
 -spec store_fds([fd()]) -> ok | {error, term()}.
 store_fds(List) when is_list(List) ->
     {Names, Fds} = build_fds(List),
-    systemd_socket:send([{"FDSTORE", "1"},
-                         {"FDNAMES", lists:join($:, Names)}
-                        ], 0, Fds).
+    systemd_socket:send(
+        [
+            {"FDSTORE", "1"},
+            {"FDNAMES", lists:join($:, Names)}
+        ],
+        0,
+        Fds
+    ).
 
 %% @doc
 %% Removes given named filedescriptors from the store.
@@ -315,16 +332,22 @@ store_fds(List) when is_list(List) ->
 %% @end
 -spec clear_fds([unicode:chardata()]) -> ok.
 clear_fds(Names) ->
-    systemd_socket:send([{"FDSTOREREMOVE", "1"},
-                         {"FDNAMES", lists:join($:, Names)}
-                        ], 0, []).
+    systemd_socket:send(
+        [
+            {"FDSTOREREMOVE", "1"},
+            {"FDNAMES", lists:join($:, Names)}
+        ],
+        0,
+        []
+    ).
 
 check_listen_pid() ->
     os:getenv(?LISTEN_PID) == os:getpid().
 
 listen_fds_count() ->
     case os:getenv(?LISTEN_FDS) of
-        false -> 0;
+        false ->
+            0;
         Env ->
             case string:to_integer(Env) of
                 {Value, ""} -> Value;
@@ -341,7 +364,8 @@ listen_names() ->
 generate_fds(Count, Names) ->
     generate_fds(?LISTEN_FDS_START, Count, Names, []).
 
-generate_fds(_, 0, _, Agg) -> lists:reverse(Agg);
+generate_fds(_, 0, _, Agg) ->
+    lists:reverse(Agg);
 generate_fds(Fd, Count, [Name | Names], Agg) ->
     generate_fds(Fd + 1, Count - 1, Names, [decode_fd(Fd, Name) | Agg]);
 generate_fds(Fd, Count, [], Agg) ->
@@ -354,7 +378,8 @@ build_fds(List) ->
     {Names, FDs} = build_fds(List, {[], []}),
     {lists:reverse(Names), lists:reverse(FDs)}.
 
-build_fds([], Acc) -> Acc;
+build_fds([], Acc) ->
+    Acc;
 build_fds([{Fd, Name} | Rest], {ANames, AFds}) when is_integer(Fd) ->
     build_fds(Rest, {[Name | ANames], [Fd | AFds]});
 build_fds([Fd | Rest], {ANames, AFds}) when is_integer(Fd) ->
