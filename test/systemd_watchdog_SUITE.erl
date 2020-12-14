@@ -252,8 +252,6 @@ unset_env(Config) ->
 do_not_unset_when_opted_out(Config) ->
     Socket = ?config(socket, Config),
 
-    % -------------------------------------------------------------------------
-    ct:log("Do not unset env when unset_env is false"),
     ok = application:set_env(systemd, unset_env, false),
     ok = start_with_socket(Socket),
     ?assertEqual(os:getpid(), os:getenv("WATCHDOG_PID")),
