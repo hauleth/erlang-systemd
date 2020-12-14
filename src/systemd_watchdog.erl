@@ -30,7 +30,8 @@
     init/1,
     handle_call/3,
     handle_cast/2,
-    handle_info/2
+    handle_info/2,
+    report_cb/1
 ]).
 
 -record(state, {timeout, enabled = true}).
@@ -85,16 +86,28 @@ notify(#state{enabled = true, timeout = Timeout}) when
         false ->
             ?LOG_WARNING("Watchdog check is unhealthy");
         Other ->
-            ?LOG_ERROR("Watchdog check is returned (boolean was expected) ~p", [
-                Other
-            ])
+            ?LOG_ERROR(#{type => wrong_ret,
+                         ret => Other},
+                       #{report_cb => fun ?MODULE:report_cb/1,
+                         watchdog_timeout => Timeout})
     catch
-        Class:Exception:_Stacktrace ->
-            ?LOG_ERROR("Watchdog healthcheck failed with ~p (~p)", [
-                Class,
-                Exception
-            ])
+        Class:Exception:Stacktrace ->
+            ?LOG_ERROR(#{type => healthcheck_failed,
+                         class => Class,
+                         exception => Exception,
+                         stacktrace => Stacktrace},
+                       #{report_cb => fun ?MODULE:report_cb/1,
+                         watchdog_timeout => Timeout})
     end,
     erlang:send_after(Timeout div Scale, self(), keepalive);
 notify(_State) ->
     ok.
+
+%% @hidden
+report_cb(#{type := wrong_ret, ret := Ret}) ->
+    {"Watchdog check returned ~p (boolean was expected)", [Ret]};
+report_cb(#{type := healthcheck_failed,
+            class := Class,
+            exception := Exception,
+            stacktrace := _Stacktrace}) ->
+    {"Watchdog healthcheck failed with ~p (~p)", [Class, Exception]}.
