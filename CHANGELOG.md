@@ -1,3 +1,29 @@
+<a name="0.5.2"></a>
+### 0.5.2 (2021-01-04)
+
+
+#### Bug Fixes
+
+* **journal:**  format message as Unicode-encoded binary ([1614c7ce](1614c7ce))
+
+
+
+<a name="0.5.1"></a>
+### 0.5.1 (2021-01-04)
+
+
+#### Bug Fixes
+
+* **journal:**  cleanup journal documentation ([3b6bf5aa](3b6bf5aa))
+
+#### Features
+
+*   define simpler format for journal messages ([c30ab4b6](c30ab4b6))
+* **notify:**  use `socket` instead of `gen_udp` for greater control ([edd778b7](edd778b7))
+* **watchdog:**  add support for healthcheck function ([9852ecf8](9852ecf8))
+
+
+
 <a name="0.5.0"></a>
 ## 0.5.0 (2020-03-09)
 
