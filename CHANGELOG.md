@@ -1,3 +1,13 @@
+<a name="0.5.3"></a>
+### 0.5.3 (2021-01-04)
+
+
+#### Bug Fixes
+
+* **journal:**  use correct name for priority attribute ([9493d35f](9493d35f))
+
+
+
 <a name="0.5.2"></a>
 ### 0.5.2 (2021-01-04)
 
