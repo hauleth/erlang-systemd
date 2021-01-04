@@ -297,11 +297,12 @@ removing_handler(#{config := #{pid := Pid}}) ->
 log(LogEvent, #{config := Config} = HConfig) ->
     #{socket := Socket, path := Path, fields := Fields} = Config,
     {FMod, FConf} = maps:get(formatter, HConfig, ?FORMATTER),
-    Msg = FMod:format(LogEvent, FConf),
-    case string:is_empty(Msg) of
+    Msg0 = FMod:format(LogEvent, FConf),
+    case string:is_empty(Msg0) of
         false ->
             FieldsData = [{Name, get_field(Field, LogEvent)}
                           || {Name, Field} <- Fields],
+            Msg = unicode:characters_to_binary(Msg0),
             Data = systemd_protocol:encode([{"MESSAGE", Msg} | FieldsData]),
             ok = gen_udp:send(Socket, Path, 0, Data);
         true -> ok
