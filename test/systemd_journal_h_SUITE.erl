@@ -177,16 +177,16 @@ output(_Config) ->
     ok = logger:update_handler_config(example, config, #{fields => []}),
     {log, <<"MESSAGE=foo\n">>} = log(debug, "foo", #{}),
 
-    % `syslog_priority' is treated in proper way
-    ok = logger:update_handler_config(example, config, #{fields => [syslog_priority]}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=7\n">>} = log(debug,     "foo", #{}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=6\n">>} = log(info,      "foo", #{}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=5\n">>} = log(notice,    "foo", #{}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=4\n">>} = log(warning,   "foo", #{}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=3\n">>} = log(error,     "foo", #{}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=2\n">>} = log(critical,  "foo", #{}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=1\n">>} = log(alert,     "foo", #{}),
-    {log, <<"MESSAGE=foo\nSYSLOG_PRIORITY=0\n">>} = log(emergency, "foo", #{}),
+    % `priority' is treated in proper way
+    ok = logger:update_handler_config(example, config, #{fields => [priority]}),
+    {log, <<"MESSAGE=foo\nPRIORITY=7\n">>} = log(debug,     "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=6\n">>} = log(info,      "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=5\n">>} = log(notice,    "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=4\n">>} = log(warning,   "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=3\n">>} = log(error,     "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=2\n">>} = log(critical,  "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=1\n">>} = log(alert,     "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=0\n">>} = log(emergency, "foo", #{}),
 
     % `mfa' is formatted to Erlang-style function definition
     ok = logger:update_handler_config(example, config, #{fields => [mfa]}),
