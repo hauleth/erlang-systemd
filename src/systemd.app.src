@@ -16,7 +16,9 @@
         {auto_formatter, true},
         {watchdog_scale, 2},
         {logger, [
-            {handler, systemd_journal, systemd_journal_h, #{}}
+            {handler, systemd_journal, systemd_journal_h, #{
+                formatter => {logger_formatter, #{template => [msg]}}
+            }}
         ]}
     ]},
     {modules, []},
