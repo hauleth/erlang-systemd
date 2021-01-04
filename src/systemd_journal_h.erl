@@ -37,7 +37,7 @@
 %%       ```
 %%       [syslog_timestamp,
 %%        syslog_pid,
-%%        syslog_priority,
+%%        priority,
 %%        {"ERL_PID", pid},
 %%        {"CODE_FILE", file},
 %%        {"CODE_LINE", line},
@@ -115,8 +115,6 @@
 %% To provide better compatibility and user convinience:
 %%
 %% <dl>
-%%      <dt>`syslog_priority'</dt>
-%%      <dd>Will work exactly the same as `{"SYSLOG_PRIORITY", priority}'.</dd>
 %%      <dt>`syslog_pid'</dt>
 %%      <dd>Will work exactly the same as `{"SYSLOG_PID", os_pid}'.</dd>
 %%      <dt>`syslog_timestamp'</dt>
@@ -153,7 +151,7 @@
 
 -define(DEFAULT_FIELDS, [{"SYSLOG_TIMESTAMP", time},
                          {"SYSLOG_PID", os_pid},
-                         {"SYSLOG_PRIORITY", priority},
+                         {"PRIORITY", priority},
                          {"ERL_PID", pid},
                          {"CODE_FILE", file},
                          {"CODE_LINE", line},
@@ -215,7 +213,6 @@ changing_config(set, #{config := OldHConfig}, NewConfig) ->
 
 translate_field(syslog_timestamp) -> {"SYSLOG_TIMESTAMP", time};
 translate_field(syslog_pid) -> {"SYSLOG_PID", os_pid};
-translate_field(syslog_priority) -> {"SYSLOG_PRIORITY", priority};
 translate_field(Atom) when is_atom(Atom) -> {Atom, Atom};
 translate_field({_Name, _Data} = Field) -> Field.
 
