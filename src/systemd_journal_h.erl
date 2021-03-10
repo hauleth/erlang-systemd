@@ -165,10 +165,14 @@
                                                  {error, term()}.
 adding_handler(HConfig) ->
     Config0 = maps:get(config, HConfig, #{}),
-    {Path, Config} = case maps:is_key(path, Config0) of
-                         true -> maps:take(path, Config0);
-                         false -> {?JOURNAL_SOCKET, Config0}
-                     end,
+    case get_path(Config0) of
+        false ->
+            {error, no_journal_socket};
+        {Path, Config} ->
+            do_add_handler(Path, Config, HConfig)
+    end.
+
+do_add_handler(Path, Config, HConfig) ->
     case validate_config(Config) of
         ok ->
             Fields = [translate_field(Field)
@@ -185,6 +189,20 @@ adding_handler(HConfig) ->
             end;
         Error -> Error
     end.
+
+-ifdef(TEST).
+get_path(Config) ->
+    case maps:is_key(path, Config) of
+        true -> maps:take(path, Config);
+        false -> {?JOURNAL_SOCKET, Config}
+    end.
+-else.
+get_path(Config) ->
+    case file:read_file_info(?JOURNAL_SOCKET) of
+        {error, enoent} -> false;
+        {ok, _} -> {?JOURNAL_SOCKET, Config}
+    end.
+-endif.
 
 %% @hidden
 changing_config(update, #{config := OldHConfig}, NewConfig) ->
@@ -378,7 +396,7 @@ start_link() ->
 
 %% @hidden
 init(_Arg) ->
-    % We never receive on this socket, so we set is as {active, false}
+    % We never receive on this socket, so we set {active, false}
     {ok, Socket} = gen_udp:open(0, [binary, local, {active, false}]),
     {ok, Socket}.
 

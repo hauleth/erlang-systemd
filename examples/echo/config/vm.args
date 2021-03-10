@@ -1,0 +1,6 @@
+-sname echo
+
+-setcookie echo_cookie
+
++K true
++A30

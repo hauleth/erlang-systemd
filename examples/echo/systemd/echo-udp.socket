@@ -1,0 +1,10 @@
+[Unit]
+Description=Erlang Echo service - UDP
+Requires=sockets.target
+
+[Socket]
+FileDescriptorName=udp
+ListenDatagram=7
+BindIPv6Only=both
+ReusePort=true
+Service=echo.service

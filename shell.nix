@@ -3,5 +3,5 @@
 with pkgs.beam.packages.erlang;
 
 pkgs.mkShell {
-  buildInputs = [ erlang rebar3 ];
+  buildInputs = [ erlang elixir rebar3 ];
 }

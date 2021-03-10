@@ -1,0 +1,4 @@
+[Unit]
+Description=Erlang Echo service
+Requires=echo-tcp.socket echo-udp.socket
+After=echo-tcp.socket echo-udp.socket

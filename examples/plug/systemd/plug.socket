@@ -1,0 +1,9 @@
+[Unit]
+Description=Listening socket
+Requires=sockets.target
+
+[Socket]
+ListenStream=80
+BindIPv6Only=both
+ReusePort=true
+NoDelay=true
