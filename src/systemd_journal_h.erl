@@ -129,7 +129,7 @@
 
 -include("systemd_internal.hrl").
 
--define(JOURNAL_SOCKET, {local, <<"/run/systemd/journal/socket">>}).
+-define(JOURNAL_SOCKET, <<"/run/systemd/journal/socket">>).
 
 % logger handler callbacks
 -export([adding_handler/1,
@@ -194,13 +194,13 @@ do_add_handler(Path, Config, HConfig) ->
 get_path(Config) ->
     case maps:is_key(path, Config) of
         true -> maps:take(path, Config);
-        false -> {?JOURNAL_SOCKET, Config}
+        false -> {{local, ?JOURNAL_SOCKET}, Config}
     end.
 -else.
 get_path(Config) ->
     case file:read_file_info(?JOURNAL_SOCKET) of
         {error, enoent} -> false;
-        {ok, _} -> {?JOURNAL_SOCKET, Config}
+        {ok, _} -> {{local, ?JOURNAL_SOCKET}, Config}
     end.
 -endif.
 
