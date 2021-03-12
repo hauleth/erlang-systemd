@@ -1,3 +1,18 @@
+<a name="0.6.0"></a>
+## 0.6.0 (2021-03-12)
+
+
+#### Features
+
+* **journal_h:**  add overload protection to journal handler ([bc8eebec](bc8eebec))
+
+#### Bug Fixes
+
+* **journal_h:**  use proper check for socket existence ([20b048e1](20b048e1))
+* **kmsg_formatter:**  do not append log level on last newline ([4e52c0f8](4e52c0f8))
+
+
+
 <a name="0.5.3"></a>
 ### 0.5.3 (2021-01-04)
 
