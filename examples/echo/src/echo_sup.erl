@@ -19,8 +19,7 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 init([]) ->
-    #{tcp := TcpPort, udp := UdpPort} = Ports = get_ports(),
-    ?LOG_NOTICE(Ports),
+    #{tcp := TcpPort, udp := UdpPort} = get_ports(),
     SupFlags = #{strategy => one_for_all},
     ChildSpecs = [
                   #{id => echo_tcp,

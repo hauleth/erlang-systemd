@@ -12,6 +12,12 @@ defmodule PlugSystemdExample.Application do
         :logger.remove_handler(:default)
 
       _ ->
+        :logger.add_handler_filter(
+          :default,
+          :elixir_filter,
+          {&:logger_filters.domain/2, {:log, :sub, [:elixir]}}
+        )
+
         :ok
     end
 
