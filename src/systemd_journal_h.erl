@@ -125,7 +125,7 @@
 %% @end
 -module(systemd_journal_h).
 
--behaviour(gen_server).
+-behaviour(enough).
 
 -include("systemd_internal.hrl").
 
@@ -139,8 +139,9 @@
          log/2]).
 
 % gen_server callbacks
--export([start_link/0,
+-export([start_link/2,
          init/1,
+         handle_load/2,
          handle_call/3,
          handle_cast/2]).
 
@@ -172,17 +173,16 @@ adding_handler(HConfig) ->
             do_add_handler(Path, Config, HConfig)
     end.
 
-do_add_handler(Path, Config, HConfig) ->
+do_add_handler(Path, Config, #{id := Id} = HConfig) ->
     case validate_config(Config) of
         ok ->
             Fields = [translate_field(Field)
                       || Field <- maps:get(fields, Config, ?DEFAULT_FIELDS)],
-            case start_connection(HConfig) of
-                {ok, Pid} ->
-                    {ok, Socket} = gen_server:call(Pid, get),
+            case start_connection(Id, Config) of
+                {ok, Pid, OlpRef} ->
                     {ok, HConfig#{config => Config#{pid => Pid,
                                                     fields => Fields,
-                                                    socket => Socket,
+                                                    olp_ref => OlpRef,
                                                     path => Path}}};
                 Err ->
                     Err
@@ -235,7 +235,7 @@ translate_field(Atom) when is_atom(Atom) -> {Atom, Atom};
 translate_field({_Name, _Data} = Field) -> Field.
 
 validate_config(Config0) when is_map(Config0) ->
-    Config = maps:without([pid, socket, path], Config0),
+    Config = maps:without([pid, olp_ref, path], Config0),
     do_validate(maps:to_list(Config)).
 
 do_validate([{fields, Fields} | Rest]) ->
@@ -243,6 +243,16 @@ do_validate([{fields, Fields} | Rest]) ->
         ok -> do_validate(Rest);
         Error -> Error
     end;
+do_validate([{sync_mode_qlen, _} | Rest]) -> do_validate(Rest);
+do_validate([{drop_mode_qlen, _} | Rest]) -> do_validate(Rest);
+do_validate([{flush_qlen, _} | Rest]) -> do_validate(Rest);
+do_validate([{burst_limit_enable, _} | Rest]) -> do_validate(Rest);
+do_validate([{burst_limit_max_count, _} | Rest]) -> do_validate(Rest);
+do_validate([{burst_limit_window_time, _} | Rest]) -> do_validate(Rest);
+do_validate([{overload_kill_enable, _} | Rest]) -> do_validate(Rest);
+do_validate([{overload_kill_qlen, _} | Rest]) -> do_validate(Rest);
+do_validate([{overload_kill_mem_size, _} | Rest]) -> do_validate(Rest);
+do_validate([{overload_kill_restart_after, _} | Rest]) -> do_validate(Rest);
 do_validate([]) -> ok;
 do_validate([Option | _]) ->
     {error, {invalid_option, Option}}.
@@ -292,25 +302,25 @@ check_name_rest(_) ->
 %% @hidden
 -spec filter_config(logger:handler_config()) -> logger:handler_config().
 filter_config(#{config := Config0} = HConfig) ->
-    Config = maps:without([pid, socket, path], Config0),
+    Config = maps:without([pid, olp_ref, path], Config0),
     HConfig#{config => Config}.
 
-start_connection(#{id := Id}) ->
-    case supervisor:start_child(?SUPERVISOR, ?CHILD_SPEC(Id, [])) of
-        {ok, Pid} -> {ok, Pid};
+start_connection(Id, Config) ->
+    case supervisor:start_child(?SUPERVISOR, ?CHILD_SPEC(Id, [Id, Config])) of
+        {ok, Pid, OlpRef} -> {ok, Pid, OlpRef};
         {error, Error} -> {error, {spawn_error, Error}}
     end.
 
 %% @hidden
 -spec removing_handler(logger:handler_config()) -> ok.
 removing_handler(#{config := #{pid := Pid}}) ->
-    ok = gen_server:call(Pid, stop),
+    ok = enough:stop(Pid),
     ok.
 
 %% @hidden
 -spec log(logger:log_event(), logger:handler_config()) -> ok.
 log(LogEvent, #{config := Config} = HConfig) ->
-    #{socket := Socket, path := Path, fields := Fields} = Config,
+    #{olp_ref := OlpRef, path := Path, fields := Fields} = Config,
     {FMod, FConf} = maps:get(formatter, HConfig, ?FORMATTER),
     Msg0 = FMod:format(LogEvent, FConf),
     case string:is_empty(Msg0) of
@@ -319,7 +329,7 @@ log(LogEvent, #{config := Config} = HConfig) ->
                           || {Name, Field} <- Fields],
             Msg = unicode:characters_to_binary(Msg0),
             Data = systemd_protocol:encode([{"MESSAGE", Msg} | FieldsData]),
-            ok = gen_udp:send(Socket, Path, 0, Data);
+            ok = enough:load(OlpRef, {send, Data, Path});
         true -> ok
     end.
 
@@ -391,8 +401,19 @@ level_to_char(emergency) -> "0".
 % Socket handler
 
 %% @hidden
-start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+start_link(Id, Opts0) ->
+    Opts = maps:with([
+    sync_mode_qlen,
+    drop_mode_qlen,
+    flush_qlen,
+    burst_limit_enable,
+    burst_limit_max_count,
+    burst_limit_window_time,
+    overload_kill_enable,
+    overload_kill_qlen,
+    overload_kill_mem_size,
+    overload_kill_restart_after], Opts0),
+    enough:start_link(Id, ?MODULE, [], Opts).
 
 %% @hidden
 init(_Arg) ->
@@ -401,8 +422,11 @@ init(_Arg) ->
     {ok, Socket}.
 
 %% @hidden
-handle_call(get, _Ref, Socket) ->
-    {reply, {ok, Socket}, Socket};
+handle_load({send, Message, Path}, Socket) ->
+    gen_udp:send(Socket, Path, Message),
+    Socket.
+
+%% @hidden
 handle_call(stop, _Ref, Socket) ->
     {stop, normal, ok, Socket}.
 
