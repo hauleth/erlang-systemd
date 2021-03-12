@@ -98,9 +98,8 @@ format(#{level := Level}=LogEvent, Config0) ->
                               error -> {logger_formatter, Config0}
                           end,
     Priority = format_level(Level),
-    Message0 = Formatter:format(LogEvent, Config),
-    Message = string:replace(Message0, "\n", [$\n, Priority], all),
-    [Priority | Message].
+    Message = Formatter:format(LogEvent, Config),
+    prefix_lines(Message, Priority).
 
 format_level(emergency) -> ?SD_EMERG;
 format_level(alert)     -> ?SD_ALERT;
@@ -110,6 +109,10 @@ format_level(warning)   -> ?SD_WARNING;
 format_level(notice)    -> ?SD_NOTICE;
 format_level(info)      -> ?SD_INFO;
 format_level(debug)     -> ?SD_DEBUG.
+
+prefix_lines(String, Prefix) ->
+    Splitted = string:split(String, "\n", all),
+    lists:map(fun(Elem) -> [Prefix, Elem, $\n] end, Splitted).
 
 %% @hidden Automatically install kmsg formatter for all handlers that use
 %% logger_std_h and points to journal stream

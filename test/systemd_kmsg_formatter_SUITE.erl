@@ -56,7 +56,7 @@ default(_Config) ->
     ok = systemd_kmsg_formatter:check_config(#{depth => 2}),
     {error, _} = systemd_kmsg_formatter:check_config(#{unknown => 10}),
 
-    "<0>MESSAGE=foo" = format(emergency, {string, "foo"}, #{}, #{template => ["MESSAGE=", msg]}),
+    "<0>MESSAGE=foo\n" = format(emergency, {string, "foo"}, #{}, #{template => ["MESSAGE=", msg]}),
     ok.
 
 custom_parent(_Config) ->
@@ -73,22 +73,22 @@ custom_parent(_Config) ->
 log_prefix(_Config) ->
     Config0 = #{parent => dumb_formatter},
 
-    "<0>foo" = format(emergency, {string, "foo"}, #{}, Config0),
-    "<1>foo" = format(alert    , {string, "foo"}, #{}, Config0),
-    "<2>foo" = format(critical , {string, "foo"}, #{}, Config0),
-    "<3>foo" = format(error    , {string, "foo"}, #{}, Config0),
-    "<4>foo" = format(warning  , {string, "foo"}, #{}, Config0),
-    "<5>foo" = format(notice   , {string, "foo"}, #{}, Config0),
-    "<6>foo" = format(info     , {string, "foo"}, #{}, Config0),
-    "<7>foo" = format(debug    , {string, "foo"}, #{}, Config0),
+    "<0>foo\n" = format(emergency, {string, "foo"}, #{}, Config0),
+    "<1>foo\n" = format(alert    , {string, "foo"}, #{}, Config0),
+    "<2>foo\n" = format(critical , {string, "foo"}, #{}, Config0),
+    "<3>foo\n" = format(error    , {string, "foo"}, #{}, Config0),
+    "<4>foo\n" = format(warning  , {string, "foo"}, #{}, Config0),
+    "<5>foo\n" = format(notice   , {string, "foo"}, #{}, Config0),
+    "<6>foo\n" = format(info     , {string, "foo"}, #{}, Config0),
+    "<7>foo\n" = format(debug    , {string, "foo"}, #{}, Config0),
 
-    "<0>foo" = format(emergency, {string, <<"foo">>}, #{}, Config0),
+    "<0>foo\n" = format(emergency, {string, <<"foo">>}, #{}, Config0),
 
     Config1 = Config0#{single_line => false},
-    "<0>foo\n<0>bar" = format(emergency, {string, "foo\nbar"}, #{}, Config1),
-    "<0>foo\n<0>bar" = format(emergency, {string, [<<"foo">>, [$\n, "bar"]]}, #{}, Config1),
+    "<0>foo\n<0>bar\n" = format(emergency, {string, "foo\nbar"}, #{}, Config1),
+    "<0>foo\n<0>bar\n" = format(emergency, {string, [<<"foo">>, [$\n, "bar"]]}, #{}, Config1),
 
-    "<0>foo\n<0>bar\n<0>baz" = format(emergency, {string, "foo\nbar\nbaz"}, #{}, Config1),
+    "<0>foo\n<0>bar\n<0>baz\n" = format(emergency, {string, "foo\nbar\nbaz"}, #{}, Config1),
 
     ok.
 
