@@ -26,7 +26,8 @@ uninstall:
 	-sudo rm -rf $(PREFIX)/$(NAME)
 
 install-rel: release
-	sudo cp -r _build/prod/rel/$(NAME) $(PREFIX)/$(NAME)
+	sudo mkdir -p $(PREFIX)/$(NAME)
+	sudo cp -r _build/prod/rel/$(NAME)/* $(PREFIX)/$(NAME)/
 	sudo chown -R root:root $(PREFIX)/$(NAME)
 	sudo find $(PREFIX)/$(NAME) -executable -exec chmod a+x '{}' +
 
