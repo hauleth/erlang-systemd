@@ -66,7 +66,7 @@ defmodule PlugSystemdExample.Router do
     Enum.reduce_while('I am so sloooooow', conn, fn chunk, conn ->
       case chunk(conn, [chunk, "\n"]) do
         {:ok, conn} ->
-          Process.sleep(1000)
+          Process.sleep(500)
           {:cont, conn}
 
         {:error, :closed} ->

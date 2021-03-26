@@ -1,19 +1,16 @@
 [Unit]
-Description=Example BEAM application
+Description=Example Plug application
 Requires=epmd.socket
 
 [Service]
 # Create required directories configure HOME
 Environment=HOME=/run/%N
-WorkingDirectory=/run/%N
 RuntimeDirectory=%N
-RuntimeDirectoryPreserve=yes
 
 # Do not start EPMD as this is managed by `epmd.socket`
 Environment='ERL_FLAGS=-start_epmd false'
 
-User=www-data
-Group=www-data
+DynamicUser=true
 Type=notify
 ExecStart=/opt/plug/bin/plug start
 WatchdogSec=1min
@@ -24,8 +21,4 @@ Restart=on-failure
 # Disable crash dump
 Environment=ERL_CRASH_DUMP_SECONDS=0
 # Protect directories and create private FS
-ProtectSystem=full
-ProtectHome=yes
 PrivateDevices=yes
-PrivateTmp=yes
-NoNewPrivileges=yes
