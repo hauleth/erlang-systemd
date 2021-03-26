@@ -53,7 +53,8 @@
     listen_fds/0,
     store_fds/1,
     clear_fds/1,
-    booted/0
+    booted/0,
+    is_journal/1
 ]).
 
 -export([spawn_ready/0]).
@@ -277,6 +278,32 @@ booted() ->
         {error, enoent} -> {ok, false};
         Error -> Error
     end.
+
+is_journal(Type) ->
+    case get_journal_stream() of
+        {Dev, Inode} ->
+            case file_info(Type) of
+                {ok, #file_info{major_device=Dev, inode=Inode}} -> true;
+                _ -> false
+            end;
+        _ ->
+            false
+    end.
+
+get_journal_stream() ->
+    Env = os:getenv("JOURNAL_STREAM", ""),
+    case string:split(Env, ":") of
+        [DevStr, InodeStr | _] ->
+            {list_to_integer(DevStr), list_to_integer(InodeStr)};
+        _ -> error
+    end.
+
+file_info(standard_io) ->
+    file:read_file_info("/dev/stdout");
+file_info(standard_error) ->
+    file:read_file_info("/dev/stderr");
+file_info(_) -> {error, unknown_device}.
+
 
 %% ----------------------------------------------------------------------------
 

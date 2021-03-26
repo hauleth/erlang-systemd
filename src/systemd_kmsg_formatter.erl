@@ -69,7 +69,6 @@
 -module(systemd_kmsg_formatter).
 
 -include("systemd.hrl").
--include_lib("kernel/include/file.hrl").
 
 -export([check_config/1,
          format/2]).
@@ -117,45 +116,22 @@ prefix_lines(String, Prefix) ->
 %% @hidden Automatically install kmsg formatter for all handlers that use
 %% logger_std_h and points to journal stream
 auto_install() ->
-    case get_journal_stream() of
-        {Dev, Inode} ->
-            [auto_install(Dev, Inode, Config)
-             || Config <- logger:get_handler_config()];
-        _ -> ok
-    end,
+    [auto_install(Config)
+     || Config <- logger:get_handler_config()],
     ok.
 
-auto_install(Dev, Inode,
-             #{id := Id,
+auto_install(#{id := Id,
                module := logger_std_h,
                config := #{type := Type},
                formatter := {FMod, FConf}}) when
       FMod =/= ?MODULE ->
-    case file_info(Type) of
-        {ok, #file_info{major_device=Dev,
-                        inode=Inode}} ->
+    case systemd:is_journal(Type) of
+        true ->
             logger:update_handler_config(
               Id,
               #{formatter => {?MODULE, FConf#{parent => FMod}}});
         _ ->
             ok
     end;
-auto_install(_Dev, _Inode, _Config) ->
+auto_install(_Config) ->
     ok.
-
-get_journal_stream() ->
-    Env = os:getenv("JOURNAL_STREAM", ""),
-    case string:split(Env, ":") of
-        [DevStr, InodeStr | _] ->
-            try {list_to_integer(DevStr), list_to_integer(InodeStr)}
-            catch
-                error:badarg:_ -> error
-            end;
-        _ -> error
-    end.
-
-file_info(standard_io) ->
-    file:read_file_info("/dev/stdout");
-file_info(standard_error) ->
-    file:read_file_info("/dev/stderr");
-file_info(_) -> {error, unknown_device}.
