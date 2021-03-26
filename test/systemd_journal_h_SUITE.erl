@@ -239,6 +239,14 @@ output(_Config) ->
     {log, <<"MESSAGE=foo\n">>} = log(debug, "foo", #{foo => 1}),
     {log, <<"MESSAGE=foo\nFOO=1\n">>} = log(debug, "foo", #{foo => #{bar => 1}}),
 
+    % Literal field values
+    ok = logger:update_handler_config(example, config, #{fields => [{"FOO", "BAR"}]}),
+    {log, <<"MESSAGE=foo\nFOO=BAR\n">>} = log(debug, "foo", #{}),
+    ok = logger:update_handler_config(example, config, #{fields => [{"FOO", <<"BAR">>}]}),
+    {log, <<"MESSAGE=foo\nFOO=BAR\n">>} = log(debug, "foo", #{}),
+    ok = logger:update_handler_config(example, config, #{fields => [{"FOO", [$B, <<"A">>, "R"]}]}),
+    {log, <<"MESSAGE=foo\nFOO=BAR\n">>} = log(debug, "foo", #{}),
+
     % Empty messages aren't sent at all
     ok = logger:set_handler_config(example, config, #{}),
     nolog = log(info, "", #{}),

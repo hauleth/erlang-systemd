@@ -344,11 +344,15 @@ get_field(priority, #{level := Level}) ->
     level_to_char(Level);
 get_field(level, #{level := Level}) ->
     atom_to_binary(Level, utf8);
-get_field(Metakey, #{meta := Meta}) ->
+get_field(Metakey, #{meta := Meta})
+  when is_atom(Metakey) orelse
+       (is_list(Metakey) andalso is_atom(hd(Metakey))) ->
     case get_meta(Metakey, Meta) of
         undefined -> "";
         Data -> to_string(Data)
-    end.
+    end;
+get_field(Iolist, _) when is_list(Iolist) orelse is_binary(Iolist) ->
+    Iolist.
 
 get_meta([], Data) ->
     Data;
