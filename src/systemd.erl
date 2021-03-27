@@ -294,7 +294,9 @@ get_journal_stream() ->
     Env = os:getenv("JOURNAL_STREAM", ""),
     case string:split(Env, ":") of
         [DevStr, InodeStr | _] ->
-            {list_to_integer(DevStr), list_to_integer(InodeStr)};
+            try {list_to_integer(DevStr), list_to_integer(InodeStr)}
+            catch error:badarg:_ -> error
+            end;
         _ -> error
     end.
 
