@@ -249,7 +249,7 @@ fds(Config) ->
     ok = systemd:store_fds([1]),
     ?assertMatch(
         {ok, #{
-            iov := [<<"FDSTORE=1\n">>],
+            iov := [<<"FDSTORE=1\nFDNAMES=\n">>],
             ctrl := [#{type := rights}]
         }},
         recvmsg(Socket)

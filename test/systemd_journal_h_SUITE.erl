@@ -216,7 +216,7 @@ output(_Config) ->
 
     % Simple metadata access
     ok = logger:update_handler_config(example, config, #{fields => [foo]}),
-    {log, <<"MESSAGE=foo\n">>} = log(debug, "foo", #{}),
+    {log, <<"MESSAGE=foo\nFOO=\n">>} = log(debug, "foo", #{}),
     {log, <<"MESSAGE=foo\nFOO=1\n">>} = log(debug, "foo", #{foo => 1}),
     {log, <<"MESSAGE=foo\nFOO=foo\n">>} = log(debug, "foo", #{foo => "foo"}),
     {log, <<"MESSAGE=foo\nFOO=foo\n">>} = log(debug, "foo", #{foo => <<"foo">>}),
@@ -235,8 +235,8 @@ output(_Config) ->
 
     % Nested metadata access
     ok = logger:update_handler_config(example, config, #{fields => [{"FOO", [foo, bar]}]}),
-    {log, <<"MESSAGE=foo\n">>} = log(debug, "foo", #{}),
-    {log, <<"MESSAGE=foo\n">>} = log(debug, "foo", #{foo => 1}),
+    {log, <<"MESSAGE=foo\nFOO=\n">>} = log(debug, "foo", #{}),
+    {log, <<"MESSAGE=foo\nFOO=\n">>} = log(debug, "foo", #{foo => 1}),
     {log, <<"MESSAGE=foo\nFOO=1\n">>} = log(debug, "foo", #{foo => #{bar => 1}}),
 
     % Literal field values
