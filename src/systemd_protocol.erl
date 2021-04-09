@@ -35,17 +35,13 @@ encode(Fields) when is_list(Fields) ->
 %% @end
 -spec encode_field(Name::field_name(), Data::field_data()) -> iodata().
 encode_field(Name, Data) ->
-    case string:is_empty(Data) of
-        true -> [];
-        false ->
-            Sep = case string:find(Data, "\n") of
-                          nomatch -> "=";
-                          _ ->
-                              Len = iolist_size(Data),
-                              [$\n, <<Len:64/integer-little>>]
-                      end,
-            [field_name(Name), Sep, Data, $\n]
-    end.
+    Sep = case string:find(Data, "\n") of
+                  nomatch -> "=";
+                  _ ->
+                      Len = iolist_size(Data),
+                      [$\n, <<Len:64/integer-little>>]
+              end,
+    [field_name(Name), Sep, Data, $\n].
 
 -spec field_name(field_name()) -> unicode:chardata().
 field_name(Atom) when is_atom(Atom) ->
