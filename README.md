@@ -36,7 +36,7 @@ end
 ```
 
 Then call `systemd:notify(ready)` when your application is ready to work/accept
-connections or add `:systemd.ready()` as a child of your application's main supervisor.
+connections or add `systemd:ready()` as a child of your application's main supervisor.
 
 ### Non-systemd systems
 
