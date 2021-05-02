@@ -30,13 +30,13 @@ Or in case of Mix project, to your `mix.exs`:
 ```elixir
 defp deps do
   [
-    {:systemd, "~> 0.2"}
+    {:systemd, "~> 0.6"}
   ]
 end
 ```
 
 Then call `systemd:notify(ready)` when your application is ready to work/accept
-connections.
+connections or add `systemd:ready()` as a child of your application's main supervisor.
 
 ### Non-systemd systems
 
@@ -144,8 +144,7 @@ defmodule MyProject.Application do
     children = [
       MyProject.Repo,
       MyProjectWeb.Endpoint,
-      :systemd.ready(), # <- IMPORTANT - this is function call
-      {Plug.Cowboy.Drainer, refs: :all}
+      :systemd.ready() # <- IMPORTANT - this is a function call (it returns the proper child spec)
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)
