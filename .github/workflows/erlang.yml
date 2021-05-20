@@ -6,8 +6,13 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        erlang_version:
+        - "23"
+        - "24"
     container:
-      image: erlang:23
+      image: erlang:${{ matrix.erlang_version }}
     steps:
     - uses: actions/checkout@v1
     - name: Compile
