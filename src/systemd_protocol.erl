@@ -28,20 +28,23 @@
 %% Encode list of fields
 %% @end
 encode(Fields) when is_list(Fields) ->
-    [encode_field(Name, Data) || {Name, Data} <- Fields].
+    lists:flatten([encode_field(Name, Data) || {Name, Data} <- Fields]).
 
 %% @doc
 %% Encode single field
 %% @end
--spec encode_field(Name::field_name(), Data::field_data()) -> iodata().
+-spec encode_field(Name::field_name(), Data::field_data()) -> erlang:iovec().
 encode_field(Name, Data) ->
     Sep = case string:find(Data, "\n") of
-                  nomatch -> "=";
+                  nomatch -> <<"=">>;
                   _ ->
                       Len = iolist_size(Data),
-                      [$\n, <<Len:64/integer-little>>]
+                      [<<"\n">>, <<Len:64/integer-little>>]
               end,
-    [field_name(Name), Sep, Data, $\n].
+    [unicode:characters_to_binary(field_name(Name)),
+     Sep,
+     unicode:characters_to_binary(Data),
+     <<"\n">>].
 
 -spec field_name(field_name()) -> unicode:chardata().
 field_name(Atom) when is_atom(Atom) ->
