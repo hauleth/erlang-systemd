@@ -24,11 +24,13 @@ start_with_socket(Socket) ->
     {ok, #{path := Path}} = socket:sockname(Socket),
     start_with_path(Path).
 
-start_with_path(Path) ->
+start_with_path(Path) when is_list(Path) ->
     ct:log("Start app with socket at ~p", [Path]),
     os:putenv("NOTIFY_SOCKET", Path),
     {ok, _} = application:ensure_all_started(systemd),
-    ok.
+    ok;
+start_with_path(Path) when is_binary(Path) ->
+    start_with_path(binary_to_list(Path)).
 
 stop(Config) ->
     ok = application:stop(systemd),

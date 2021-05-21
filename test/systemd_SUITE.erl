@@ -21,7 +21,10 @@ init_per_testcase(Name, Config0) ->
     PrivDir = ?config(priv_dir, Config0),
     Path = socket_path(PrivDir),
     {ok, Socket} = socket:open(local, dgram, default),
-    {ok, _Port} = socket:bind(Socket, #{family => local, path => Path}),
+    case socket:bind(Socket, #{family => local, path => Path}) of
+        {ok, _Port} -> ok; %% Erlang up to 23
+        ok          -> ok  %% Erlang 24+
+    end,
     Config1 = [{socket, Socket}, {path, Path} | Config0],
 
     case erlang:function_exported(?MODULE, Name, 2) of
