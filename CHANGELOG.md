@@ -1,3 +1,13 @@
+<a name="0.6.1"></a>
+## 0.6.1 (2021-05-21)
+
+
+#### Bug Fixes
+
+* Erlang 24 compatibility ([#29](https://github.com/hauleth/erlang-systemd/pull/29)).
+  Contributed by @dumbbell and @pjk25
+
+
 <a name="0.6.0"></a>
 ## 0.6.0 (2021-03-12)
 
