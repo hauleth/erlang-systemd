@@ -48,7 +48,7 @@ all functions will simply work as (almost) no-ops.
 
 Assuming you have `my_app.service` unit like that
 
-```systemd
+```ini
 [Unit]
 Description=My Awesome App
 
