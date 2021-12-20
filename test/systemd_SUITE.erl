@@ -22,8 +22,10 @@ init_per_testcase(Name, Config0) ->
     Path = socket_path(PrivDir),
     {ok, Socket} = socket:open(local, dgram, default),
     case socket:bind(Socket, #{family => local, path => Path}) of
-        {ok, _Port} -> ok; %% Erlang up to 23
-        ok          -> ok  %% Erlang 24+
+        %% Erlang up to 23
+        {ok, _Port} -> ok;
+        %% Erlang 24+
+        ok -> ok
     end,
     Config1 = [{socket, Socket}, {path, Path} | Config0],
 
@@ -82,6 +84,7 @@ notify(Config) ->
 
     ct:log("Connection address persists between process restarts"),
     gen_server:stop(systemd_socket, error, 100),
+    ct:sleep(100),
     systemd:notify(ready),
     {ok, <<"READY=1\n">>} = recv(Socket),
     ok.
@@ -95,8 +98,12 @@ ready(_, Config) ->
 
 ready(Config) ->
     Socket = ?config(socket, Config),
+    OsPid = list_to_binary(os:getpid()),
     {ok, _Pid} = mock_supervisor:start_link([systemd:ready()]),
-    {ok, <<"READY=1\n">>} = recv(Socket),
+    ?assertEqual(
+        {ok, <<"MAINPID=", OsPid/binary, "\nREADY=1\n">>},
+        recv(Socket)
+    ),
 
     ok.
 

@@ -6,6 +6,4 @@ Requires=sockets.target
 FileDescriptorName=tcp
 ListenStream=7
 BindIPv6Only=both
-ReusePort=true
-NoDelay=true
 Service=echo.service

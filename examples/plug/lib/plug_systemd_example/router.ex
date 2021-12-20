@@ -13,6 +13,10 @@ defmodule PlugSystemdExample.Router do
     send_resp(conn, 200, ["PID: ", :os.getpid(), "\n"])
   end
 
+  get "/hello" do
+    send_resp(conn, 200, "World!")
+  end
+
   # Exit the process with given status code
   get "/exit" do
     status =
@@ -49,12 +53,7 @@ defmodule PlugSystemdExample.Router do
 
   # Simulate reload of the application
   get "/reload" do
-    :systemd.notify(:reloading)
-
-    Task.start(fn ->
-      Process.sleep(5_000)
-      :systemd.notify(:ready)
-    end)
+    :systemd.reload()
 
     send_resp(conn, 204, "")
   end

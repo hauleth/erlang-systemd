@@ -2,8 +2,10 @@
 
 -behaviour(supervisor).
 
--export([start_link/1,
-         init/1]).
+-export([
+    start_link/1,
+    init/1
+]).
 
 start_link(Children) ->
     supervisor:start_link(?MODULE, Children).

@@ -33,9 +33,11 @@ defmodule PlugSystemdExample.Application do
     children = [
       {Plug.Cowboy, cowboy_opts},
       # Notify systemd that application is ready for work
-      :systemd.ready(),
-      # Wait for all connections to end before shutting down
-      {Plug.Cowboy.Drainer, refs: :all, shutdown: 60_000}
+      :systemd.ready("ready"),
+      :systemd.set_status(down: [status: "drained"]),
+      # # Wait for all connections to end before shutting down
+      {Plug.Cowboy.Drainer, refs: :all, shutdown: 10_000},
+      :systemd.set_status(down: [status: "draining"])
     ]
 
     opts = [strategy: :one_for_one, name: PlugSystemdExample.Supervisor]
@@ -57,11 +59,19 @@ defmodule PlugSystemdExample.Application do
         fd when is_integer(fd) and fd > 0 -> fd
       end
 
+    case :socket.open(fd) do
+      {:ok, socket} ->
+        Logger.info(:socket.info(socket))
+
+      {:error, reason} ->
+        Logger.error(inspect(reason))
+    end
+
     [
-      transport_options: [
-        socket_opts: [:inet6, fd: fd]
-      ],
-      port: 0
+      net: :inet6,
+      port: 0,
+      fd: fd,
+      exit_on_close: false
     ]
   end
 end

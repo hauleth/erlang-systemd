@@ -32,36 +32,45 @@ start_link(Opts) ->
 
 init(_Opts) ->
     SupFlags = #{
-      strategy => one_for_one
-     },
-    SocketServer = #{id => socket,
-                     start => {systemd_socket, start_link, [notify_socket()]}},
+        strategy => one_for_one
+    },
+    SocketServer = #{
+        id => socket,
+        start => {systemd_socket, start_link, [notify_socket()]}
+    },
 
     WatchdogConfig = watchdog(),
-    Watchdog = #{id => watchdog,
-                 start => {systemd_watchdog, start_link, [WatchdogConfig]}},
+    Watchdog = #{
+        id => watchdog,
+        start => {systemd_watchdog, start_link, [WatchdogConfig]}
+    },
 
     {ok, {SupFlags, [SocketServer, Watchdog]}}.
 
 watchdog() ->
     Pid = os:getpid(),
-    Enabled = case os:getenv(?WATCHDOG_PID) of
-                 false -> true;
-                 Pid -> true;
-                 _ -> false
-             end,
-    Time = case os:getenv(?WATCHDOG_TIMEOUT) of
-               false -> infinity;
-               EnvTime ->
-                   case string:to_integer(EnvTime) of
-                       {Timeout, ""} when Timeout > 0 ->
-                           erlang:convert_time_unit(Timeout,
-                                                    microsecond,
-                                                    millisecond);
-                       _ ->
-                           infinity
-                   end
-           end,
+    Enabled =
+        case os:getenv(?WATCHDOG_PID) of
+            false -> true;
+            Pid -> true;
+            _ -> false
+        end,
+    Time =
+        case os:getenv(?WATCHDOG_TIMEOUT) of
+            false ->
+                infinity;
+            EnvTime ->
+                case string:to_integer(EnvTime) of
+                    {Timeout, ""} when Timeout > 0 ->
+                        erlang:convert_time_unit(
+                            Timeout,
+                            microsecond,
+                            millisecond
+                        );
+                    _ ->
+                        infinity
+                end
+        end,
     unset(watchdog),
     case {Enabled, Time} of
         {_, infinity} -> {false, infinity};
@@ -69,20 +78,22 @@ watchdog() ->
     end.
 
 notify_socket() ->
-    State = case os:getenv(?NOTIFY_SOCKET) of
-                false ->
-                    [];
-                [$@ | AbstractPath] ->
-                    [0 | AbstractPath];
-                Path ->
-                    case file:read_file_info(Path) of
-                        {error, _Error} ->
-                            [];
-                        {ok, #file_info{access=Access}}
-                          when Access =:= write; Access =:= read_write ->
-                            Path
-                    end
-            end,
+    State =
+        case os:getenv(?NOTIFY_SOCKET) of
+            false ->
+                [];
+            [$@ | AbstractPath] ->
+                [0 | AbstractPath];
+            Path ->
+                case file:read_file_info(Path) of
+                    {error, _Error} ->
+                        [];
+                    {ok, #file_info{access = Access}} when
+                        Access =:= write; Access =:= read_write
+                    ->
+                        Path
+                end
+        end,
     unset(notify),
     State.
 

@@ -8,7 +8,12 @@ defmodule PlugSystemdExample.MixProject do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      releases: [plug: []]
+      releases: [
+        plug: [
+          include_executables_for: [:unix],
+          strip_beams: false
+        ]
+      ]
     ]
   end
 

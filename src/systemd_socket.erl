@@ -27,11 +27,13 @@
 
 -export([send/3]).
 
--export([start_link/1,
-         init/1,
-         handle_call/3,
-         handle_cast/2,
-         terminate/2]).
+-export([
+    start_link/1,
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    terminate/2
+]).
 
 % # Internal interface
 
@@ -47,25 +49,11 @@ start_link(Address) ->
 init([]) ->
     {ok, []};
 init(Address) ->
-    % We never receive on this socket, so we set is as {active, false}
     {ok, Socket} = socket:open(local, dgram),
     {ok, {Socket, Address}}.
 
-handle_call({send, Message, Pid, Fds}, _Ref, {Socket, Address}=State) ->
-    Addr = #{family => local, path => Address},
-    MsgHdr = #{
-      addr => Addr,
-      iov => Message,
-      ctrl => encode_fds(Fds) ++ encode_auth(Pid)
-     },
-    Resp = case socket:sendmsg(Socket, MsgHdr) of
-               ok -> ok;
-               {error, ebadf} -> {error, bad_descriptor};
-               {error, _} = Error -> Error
-           end,
-    {reply, Resp, State};
-handle_call(_Msg, _Ref, []) ->
-    {reply, ok, []}.
+handle_call({send, Message, Pid, Fds}, _Ref, State) ->
+    {reply, send_msg(State, iolist_to_binary(Message), Pid, Fds), State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -74,13 +62,32 @@ terminate(_Reason, {Socket, _Address}) ->
     ok = socket:close(Socket),
     ok.
 
-encode_auth(0) -> [];
-encode_auth(_) ->
-    erlang:error(unimplemented).
+send_msg([], _Message, _Pid, _Fds) ->
+    ok;
+send_msg({Socket, Address}, Message, Pid, Fds) ->
+    Addr = #{family => local, path => Address},
+    MsgHdr = #{
+        addr => Addr,
+        iov => [Message],
+        ctrl => encode_fds(Fds) ++ encode_auth(Pid)
+    },
+    case socket:sendmsg(Socket, MsgHdr) of
+        ok -> ok;
+        {error, ebadf} -> {error, bad_descriptor};
+        {error, _} = Error -> Error
+    end.
 
-encode_fds([]) -> [];
+encode_auth(0) -> [];
+encode_auth(_) -> erlang:error(unimplemented).
+
+encode_fds([]) ->
+    [];
 encode_fds(Fds) when is_list(Fds) ->
-    Binary = << <<Fd:32/native-integer>> || Fd <- Fds>>,
-    [#{level => socket,
-       type => rights,
-       data => Binary}].
+    Binary = <<<<Fd:32/native-integer>> || Fd <- Fds>>,
+    [
+        #{
+            level => socket,
+            type => rights,
+            data => Binary
+        }
+    ].

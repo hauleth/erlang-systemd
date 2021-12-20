@@ -21,9 +21,11 @@
 
 -behaviour(application).
 
--export([start/2,
-         prep_stop/1,
-         stop/1]).
+-export([
+    start/2,
+    prep_stop/1,
+    stop/1
+]).
 
 start(_Type, _Opts) ->
     case application:get_env(systemd, auto_formatter) of
@@ -33,7 +35,7 @@ start(_Type, _Opts) ->
     systemd_sup:start_link([]).
 
 prep_stop(State) ->
-    ok = systemd:notify(stopping),
+    systemd:notify(persistent_term:get({systemd, shutdown}, stopping)),
     State.
 
 stop(_State) ->

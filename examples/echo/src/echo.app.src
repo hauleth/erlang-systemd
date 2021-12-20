@@ -6,7 +6,8 @@
   {applications,
    [kernel,
     stdlib,
-    systemd
+    systemd,
+    runtime_tools
    ]},
   {env,[]},
   {modules, []},

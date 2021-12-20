@@ -1,17 +1,39 @@
-{application,systemd,
-    [{description,"systemd integration for Erlang applications"},
-     {vsn,"0.6.1"},
-     {registered,[systemd_socket,systemd_sup,systemd_watchdog]},
-     {applications,[kernel,stdlib,enough]},
-     {mod,{systemd_app,[]}},
-     {env,
-         [{unset_env,true},
-          {auto_formatter,true},
-          {watchdog_scale,2},
-          {logger,
-              [{handler,systemd_journal,systemd_journal_h,
-                   #{formatter =>
-                         {logger_formatter,#{template => [msg]}}}}]}]},
-     {modules,[]},
-     {licenses,["Apache-2.0"]},
-     {links,[{"GitHub","https://github.com/hauleth/erlang-systemd"}]}]}.
+{application, systemd, [
+    {description, "systemd integration for Erlang applications"},
+    {vsn, git},
+    {registered, [
+        systemd_socket,
+        systemd_sup,
+        systemd_watchdog
+    ]},
+    {applications, [
+        kernel,
+        stdlib,
+        enough
+    ]},
+    {mod, {systemd_app, []}},
+    {env, [
+        {unset_env, true},
+        {auto_formatter, true},
+        {watchdog_scale, 2},
+        {logger, [
+            {handler, systemd_journal, systemd_journal_h, #{
+                formatter => {logger_formatter, #{template => [msg]}}
+            }}
+        ]}
+    ]},
+    {modules, []},
+
+    {licenses, ["Apache-2.0"]},
+    {links, [
+        {"GitHub", "https://github.com/hauleth/erlang-systemd"},
+        {"systemd", "https://systemd.io"},
+        {"FreeDesktop systemd Wiki",
+            "https://www.freedesktop.org/wiki/Software/systemd/"},
+        {"systemd(1)",
+            "https://www.freedesktop.org/software/systemd/man/systemd.html"},
+        {"sd-daemon(3)",
+            "https://www.freedesktop.org/software/systemd/man/sd-daemon.html"},
+        {"Wikipedia", "https://en.wikipedia.org/wiki/Systemd"}
+    ]}
+]}.

@@ -49,6 +49,10 @@
     unset_env/1,
     notify/1,
     ready/0,
+    ready/1,
+    reload/0,
+    reload/1,
+    set_status/1,
     watchdog/1,
     listen_fds/0,
     store_fds/1,
@@ -57,7 +61,7 @@
     is_journal/1
 ]).
 
--export([spawn_ready/0]).
+-export([notify_spawn/2]).
 
 %% @doc
 %% Unset environment variables for given subsystem.
@@ -160,8 +164,6 @@ normalize_state(stopping) ->
     {stopping, "1"};
 normalize_state(reloading) ->
     {reloading, "1"};
-normalize_state({status, Status}) ->
-    {"STATUS", Status};
 normalize_state({errno, Errno}) when is_integer(Errno) ->
     {"ERRNO", integer_to_binary(Errno)};
 normalize_state({buserror, Error}) ->
@@ -182,17 +184,54 @@ normalize_state({_, _} = Msg) ->
 %% ready (usually at the end).
 %% @end
 ready() ->
+    ready(undefined).
+
+ready(undefined) ->
+    Up = [{"MAINPID", os:getpid()}, ready],
+    set_status(#{up => Up});
+ready(Status) ->
+    Up = [{"MAINPID", os:getpid()}, ready, {status, Status}],
+    set_status(#{up => Up}).
+
+set_status(List) when is_list(List) ->
+    set_status(maps:from_list(List));
+set_status(Map) ->
+    Up = maps:get(up, Map, undefined),
+    Down = maps:get(down, Map, undefined),
     #{
-        id => systemd_watchdog_ready,
-        start => {?MODULE, spawn_ready, []},
-        restart => temporary,
-        shutdown => brutal_kill
+        id => {?MODULE, {Up, Down}},
+        start => {?MODULE, notify_spawn, [Up, Down]},
+        restart => temporary
     }.
 
 %% @hidden helper for `ready/0' function that spawn process that notify about
 %% application readiness.
-spawn_ready() ->
-    {ok, spawn_link(fun() -> systemd:notify(ready) end)}.
+notify_spawn(Up, Down) ->
+    Parent = self(),
+    Pid = spawn_link(fun() -> notify_init(Parent, Up, Down) end),
+    {ok, Pid}.
+
+notify_init(Parent, Up, Down) ->
+    process_flag(trap_exit, true),
+    try_notify(Up),
+    notify_loop(Parent, Down).
+
+notify_loop(Parent, Down) ->
+    receive
+        {'EXIT', Parent, _Reason} ->
+            try_notify(Down),
+            ok;
+        _ ->
+            notify_loop(Parent, Down)
+    end.
+
+try_notify(undefined) -> ok;
+try_notify(Message) -> notify(Message).
+
+reload() -> reload([]).
+reload(Opts) ->
+    persistent_term:put({?MODULE, shutdown}, reloading),
+    init:restart(Opts).
 
 %% ----------------------------------------------------------------------------
 
@@ -283,7 +322,7 @@ is_journal(Type) ->
     case get_journal_stream() of
         {Dev, Inode} ->
             case file_info(Type) of
-                {ok, #file_info{major_device=Dev, inode=Inode}} -> true;
+                {ok, #file_info{major_device = Dev, inode = Inode}} -> true;
                 _ -> false
             end;
         _ ->
@@ -294,18 +333,21 @@ get_journal_stream() ->
     Env = os:getenv("JOURNAL_STREAM", ""),
     case string:split(Env, ":") of
         [DevStr, InodeStr | _] ->
-            try {list_to_integer(DevStr), list_to_integer(InodeStr)}
-            catch error:badarg:_ -> error
+            try
+                {list_to_integer(DevStr), list_to_integer(InodeStr)}
+            catch
+                error:badarg:_ -> error
             end;
-        _ -> error
+        _ ->
+            error
     end.
 
 file_info(standard_io) ->
     file:read_file_info("/dev/stdout");
 file_info(standard_error) ->
     file:read_file_info("/dev/stderr");
-file_info(_) -> {error, unknown_device}.
-
+file_info(_) ->
+    {error, unknown_device}.
 
 %% ----------------------------------------------------------------------------
 

@@ -96,8 +96,10 @@ init_per_testcase(_Name, Config0) ->
     os:putenv("WATCHDOG_USEC", integer_to_list(Timeout0)),
     {ok, Socket} = socket:open(local, dgram, default),
     case socket:bind(Socket, #{family => local, path => Path}) of
-        {ok, _Port} -> ok; %% Erlang up to 23
-        ok          -> ok  %% Erlang 24+
+        %% Erlang up to 23
+        {ok, _Port} -> ok;
+        %% Erlang 24+
+        ok -> ok
     end,
     [{socket, Socket}, {path, Path}, {timeout, Timeout} | Config1].
 

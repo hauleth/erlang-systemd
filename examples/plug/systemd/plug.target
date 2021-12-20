@@ -1,4 +1,0 @@
-[Unit]
-Description=Simple HTTP server example in Elixir
-Requires=plug.socket
-After=plug.socket

@@ -1,10 +1,12 @@
 SYSTEMD_TARGET ?= /usr/local/lib/systemd/system
 PREFIX ?= /opt
 
+SOCKETS ?= $(NAME).socket
+
 UNITS = $(notdir $(wildcard systemd/*))
 
 start: install
-	sudo systemctl start $(NAME).target
+	-for unit in ${SOCKETS}; do sudo systemctl start $$unit; done
 
 test: release
 	systemd-socket-activate -l 8080 _build/prod/rel/$(NAME)/bin/$(NAME) $(RUN_COMMAND)
@@ -27,7 +29,7 @@ uninstall:
 
 install-rel: release
 	sudo mkdir -p $(PREFIX)/$(NAME)
-	sudo cp -r _build/prod/rel/$(NAME)/* $(PREFIX)/$(NAME)/
+	sudo cp -fr _build/prod/rel/$(NAME)/* $(PREFIX)/$(NAME)/
 	sudo chown -R root:root $(PREFIX)/$(NAME)
 	sudo find $(PREFIX)/$(NAME) -executable -exec chmod a+x '{}' +
 

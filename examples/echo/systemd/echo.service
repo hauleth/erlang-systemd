@@ -1,6 +1,7 @@
 [Unit]
 Description=Echo service in Erlang
-Requires=epmd.socket
+Requires=epmd.socket echo-tcp.socket echo-udp.socket
+After=echo-tcp.socket echo-udp.socket
 
 [Service]
 # Create required directories configure HOME
@@ -16,6 +17,7 @@ ExecStart=/opt/echo/bin/echo foreground
 WatchdogSec=1min
 NotifyAccess=main
 Restart=on-failure
+KillMode=mixed
 
 # Security options
 # Disable crash dump

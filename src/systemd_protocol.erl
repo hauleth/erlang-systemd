@@ -18,8 +18,10 @@
 %% @hidden
 -module(systemd_protocol).
 
--export([encode/1,
-         encode_field/2]).
+-export([
+    encode/1,
+    encode_field/2
+]).
 
 -type field_name() :: atom() | unicode:chardata().
 -type field_data() :: iodata().
@@ -33,18 +35,22 @@ encode(Fields) when is_list(Fields) ->
 %% @doc
 %% Encode single field
 %% @end
--spec encode_field(Name::field_name(), Data::field_data()) -> erlang:iovec().
+-spec encode_field(Name :: field_name(), Data :: field_data()) -> erlang:iovec().
 encode_field(Name, Data) ->
-    Sep = case string:find(Data, "\n") of
-                  nomatch -> <<"=">>;
-                  _ ->
-                      Len = iolist_size(Data),
-                      [<<"\n">>, <<Len:64/integer-little>>]
-              end,
-    [unicode:characters_to_binary(field_name(Name)),
-     Sep,
-     unicode:characters_to_binary(Data),
-     <<"\n">>].
+    Sep =
+        case string:find(Data, "\n") of
+            nomatch ->
+                <<"=">>;
+            _ ->
+                Len = iolist_size(Data),
+                [<<"\n">>, <<Len:64/integer-little>>]
+        end,
+    [
+        unicode:characters_to_binary(field_name(Name)),
+        Sep,
+        unicode:characters_to_binary(Data),
+        <<"\n">>
+    ].
 
 -spec field_name(field_name()) -> unicode:chardata().
 field_name(Atom) when is_atom(Atom) ->

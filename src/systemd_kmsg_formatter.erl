@@ -70,8 +70,10 @@
 
 -include("systemd.hrl").
 
--export([check_config/1,
-         format/2]).
+-export([
+    check_config/1,
+    format/2
+]).
 
 -export([auto_install/0]).
 
@@ -79,7 +81,7 @@
 -spec check_config(logger:formatter_config()) -> ok | {error, term()}.
 check_config(Config0) ->
     case maps:take(parent, Config0) of
-         {Formatter, Config} ->
+        {Formatter, Config} ->
             case erlang:function_exported(Formatter, check_config, 1) of
                 true -> Formatter:check_config(Config);
                 _ -> ok
@@ -91,23 +93,24 @@ check_config(Config0) ->
 %% @hidden
 -spec format(logger:log_event(), logger:formatter_config()) ->
     unicode:chardata().
-format(#{level := Level}=LogEvent, Config0) ->
-    {Formatter, Config} = case maps:take(parent, Config0) of
-                              {FMod, Conf} -> {FMod, Conf};
-                              error -> {logger_formatter, Config0}
-                          end,
+format(#{level := Level} = LogEvent, Config0) ->
+    {Formatter, Config} =
+        case maps:take(parent, Config0) of
+            {FMod, Conf} -> {FMod, Conf};
+            error -> {logger_formatter, Config0}
+        end,
     Priority = format_level(Level),
     Message = Formatter:format(LogEvent, Config),
     prefix_lines(Message, Priority).
 
 format_level(emergency) -> ?SD_EMERG;
-format_level(alert)     -> ?SD_ALERT;
-format_level(critical)  -> ?SD_CRIT;
-format_level(error)     -> ?SD_ERR;
-format_level(warning)   -> ?SD_WARNING;
-format_level(notice)    -> ?SD_NOTICE;
-format_level(info)      -> ?SD_INFO;
-format_level(debug)     -> ?SD_DEBUG.
+format_level(alert) -> ?SD_ALERT;
+format_level(critical) -> ?SD_CRIT;
+format_level(error) -> ?SD_ERR;
+format_level(warning) -> ?SD_WARNING;
+format_level(notice) -> ?SD_NOTICE;
+format_level(info) -> ?SD_INFO;
+format_level(debug) -> ?SD_DEBUG.
 
 prefix_lines(String, Prefix) ->
     Splitted = string:split(String, "\n", all),
@@ -116,20 +119,26 @@ prefix_lines(String, Prefix) ->
 %% @hidden Automatically install kmsg formatter for all handlers that use
 %% logger_std_h and points to journal stream
 auto_install() ->
-    [auto_install(Config)
-     || Config <- logger:get_handler_config()],
+    [
+        auto_install(Config)
+     || Config <- logger:get_handler_config()
+    ],
     ok.
 
-auto_install(#{id := Id,
-               module := logger_std_h,
-               config := #{type := Type},
-               formatter := {FMod, FConf}}) when
-      FMod =/= ?MODULE ->
+auto_install(#{
+    id := Id,
+    module := logger_std_h,
+    config := #{type := Type},
+    formatter := {FMod, FConf}
+}) when
+    FMod =/= ?MODULE
+->
     case systemd:is_journal(Type) of
         true ->
             logger:update_handler_config(
-              Id,
-              #{formatter => {?MODULE, FConf#{parent => FMod}}});
+                Id,
+                #{formatter => {?MODULE, FConf#{parent => FMod}}}
+            );
         _ ->
             ok
     end;

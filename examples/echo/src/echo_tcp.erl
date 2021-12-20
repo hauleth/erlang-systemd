@@ -14,8 +14,7 @@ listen(Opt) ->
             inet6,
             binary,
             {packet, 0},
-            {active, false},
-            {reuseaddr, true}],
+            {active, false}],
     {ok, LSock} = gen_tcp:listen(0, Opts),
     accept(LSock).
 
@@ -31,5 +30,6 @@ loop(Sock) ->
             gen_tcp:send(Sock, Data),
             loop(Sock);
         {error, closed} ->
+            ?LOG_NOTICE(#{protocol => tcp, state => closed}),
             ok
     end.

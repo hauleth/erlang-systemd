@@ -8,12 +8,14 @@
 all() -> [{group, config}, journal_handler, filter_config, output].
 
 groups() ->
-    [{config, [],
-      [changing_config,
-       {config_add, [], [config_fields]},
-       {config_set, [], [config_fields]},
-       {config_update, [], [config_fields]}]
-     }].
+    [
+        {config, [], [
+            changing_config,
+            {config_add, [], [config_fields]},
+            {config_set, [], [config_fields]},
+            {config_update, [], [config_fields]}
+        ]}
+    ].
 
 init_per_group(config_add, Config) ->
     [{mode, add} | Config];
@@ -40,10 +42,11 @@ init_per_testcase(Name, Config0) ->
     end.
 
 end_per_testcase(Name, Config0) ->
-    Config = case erlang:function_exported(?MODULE, Name, 2) of
-                 true -> ?MODULE:Name(finish, Config0);
-                 false -> Config0
-             end,
+    Config =
+        case erlang:function_exported(?MODULE, Name, 2) of
+            true -> ?MODULE:Name(finish, Config0);
+            false -> Config0
+        end,
 
     _ = application:stop(systemd),
     ok = gen_server:stop(?config(mock_pid, Config)),
@@ -54,7 +57,8 @@ check_config(add, Config) ->
     case logger:add_handler(example, systemd_journal_h, #{config => Config}) of
         ok ->
             logger:remove_handler(example);
-        {error, {handler_not_added, Error}} -> {error, Error}
+        {error, {handler_not_added, Error}} ->
+            {error, Error}
     end;
 check_config(set, Config) ->
     ok = logger:add_handler(example, systemd_journal_h, #{}),
@@ -89,19 +93,31 @@ config_fields(Config) ->
     ok = check_config(Mode, #{fields => [{"BAR", <<"bar">>}]}),
     ok = check_config(Mode, #{fields => [{<<"BAR">>, "bar"}]}),
     ok = check_config(Mode, #{fields => [{<<"BAR">>, <<"bar">>}]}),
-    {error, {invalid_field, [foo, bar]}} = check_config(Mode, #{fields => [[foo, bar]]}),
-    {error, {name_invalid, "B.AR"}} = check_config(Mode, #{fields => [{"B.AR", bar}]}),
+    {error, {invalid_field, [foo, bar]}} = check_config(Mode, #{
+        fields => [[foo, bar]]
+    }),
+    {error, {name_invalid, "B.AR"}} = check_config(Mode, #{
+        fields => [{"B.AR", bar}]
+    }),
     {error, {name_invalid, "_a"}} = check_config(Mode, #{fields => ['_a']}),
-    {error, {invalid_field, [foo, 0]}} = check_config(Mode, #{fields => [[foo, 0]]}),
+    {error, {invalid_field, [foo, 0]}} = check_config(Mode, #{
+        fields => [[foo, 0]]
+    }),
     {error, {invalid_field, "foo"}} = check_config(Mode, #{fields => ["foo"]}),
-    {error, {invalid_field, {0, foo}}} = check_config(Mode, #{fields => [{0, foo}]}),
-    {error, {invalid_option, {unknown_option, 10}}} = check_config(Mode, #{unknown_option => 10}),
+    {error, {invalid_field, {0, foo}}} = check_config(Mode, #{
+        fields => [{0, foo}]
+    }),
+    {error, {invalid_option, {unknown_option, 10}}} = check_config(Mode, #{
+        unknown_option => 10
+    }),
     ok.
 
 changing_config(_Config) ->
     ct:log("Fields"),
     ok = logger:add_handler(example, systemd_journal_h, #{}),
-    {ok, #{config := #{fields := DefaultFields}}} = logger:get_handler_config(example),
+    {ok, #{config := #{fields := DefaultFields}}} = logger:get_handler_config(
+        example
+    ),
 
     ok = logger:update_handler_config(example, config, #{fields => []}),
     {ok, #{config := #{fields := []}}} = logger:get_handler_config(example),
@@ -110,7 +126,9 @@ changing_config(_Config) ->
     {ok, #{config := #{fields := []}}} = logger:get_handler_config(example),
 
     ok = logger:set_handler_config(example, config, #{}),
-    {ok, #{config := #{fields := DefaultFields}}} = logger:get_handler_config(example),
+    {ok, #{config := #{fields := DefaultFields}}} = logger:get_handler_config(
+        example
+    ),
 
     ok = logger:set_handler_config(example, config, #{fields => []}),
     {ok, #{config := #{fields := []}}} = logger:get_handler_config(example),
@@ -122,7 +140,9 @@ changing_config(_Config) ->
     {ok, #{formatter := DefaultFormatter}} = logger:get_handler_config(example),
 
     ok = logger:set_handler_config(example, formatter, {dummy_formatter, #{}}),
-    {ok, #{formatter := {dummy_formatter, #{}}}} = logger:get_handler_config(example),
+    {ok, #{formatter := {dummy_formatter, #{}}}} = logger:get_handler_config(
+        example
+    ),
 
     ok = logger:set_handler_config(example, #{}),
     {ok, #{formatter := DefaultFormatter}} = logger:get_handler_config(example),
@@ -157,10 +177,14 @@ journal_handler(_Config) ->
 
 output(init, Config) ->
     Path = ?config(path, Config),
-    ok = logger:add_handler(example,
-                            systemd_journal_h,
-                            #{formatter => {dumb_formatter, #{}},
-                              config => #{path => {local, Path}}}),
+    ok = logger:add_handler(
+        example,
+        systemd_journal_h,
+        #{
+            formatter => {dumb_formatter, #{}},
+            config => #{path => {local, Path}}
+        }
+    ),
     OldConfig = logger:get_primary_config(),
     ok = logger:update_primary_config(#{level => all}),
     [{logger_config, OldConfig} | Config];
@@ -179,18 +203,20 @@ output(_Config) ->
 
     % `priority' is treated in proper way
     ok = logger:update_handler_config(example, config, #{fields => [priority]}),
-    {log, <<"MESSAGE=foo\nPRIORITY=7\n">>} = log(debug,     "foo", #{}),
-    {log, <<"MESSAGE=foo\nPRIORITY=6\n">>} = log(info,      "foo", #{}),
-    {log, <<"MESSAGE=foo\nPRIORITY=5\n">>} = log(notice,    "foo", #{}),
-    {log, <<"MESSAGE=foo\nPRIORITY=4\n">>} = log(warning,   "foo", #{}),
-    {log, <<"MESSAGE=foo\nPRIORITY=3\n">>} = log(error,     "foo", #{}),
-    {log, <<"MESSAGE=foo\nPRIORITY=2\n">>} = log(critical,  "foo", #{}),
-    {log, <<"MESSAGE=foo\nPRIORITY=1\n">>} = log(alert,     "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=7\n">>} = log(debug, "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=6\n">>} = log(info, "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=5\n">>} = log(notice, "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=4\n">>} = log(warning, "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=3\n">>} = log(error, "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=2\n">>} = log(critical, "foo", #{}),
+    {log, <<"MESSAGE=foo\nPRIORITY=1\n">>} = log(alert, "foo", #{}),
     {log, <<"MESSAGE=foo\nPRIORITY=0\n">>} = log(emergency, "foo", #{}),
 
     % `mfa' is formatted to Erlang-style function definition
     ok = logger:update_handler_config(example, config, #{fields => [mfa]}),
-    {log, <<"MESSAGE=foo\nMFA=foo:bar/6\n">>} = log(debug, "foo", #{mfa => {foo, bar, 6}}),
+    {log, <<"MESSAGE=foo\nMFA=foo:bar/6\n">>} = log(debug, "foo", #{
+        mfa => {foo, bar, 6}
+    }),
 
     % `level' is displayed as-is
     ok = logger:update_handler_config(example, config, #{fields => [level]}),
@@ -198,21 +224,40 @@ output(_Config) ->
 
     % `time' is formatted as RFC3339 in UTC
     ok = logger:update_handler_config(example, config, #{fields => [time]}),
-    {log, <<"MESSAGE=foo\nTIME=1970-01-01T00:00:00.000000Z\n">>} = log(debug, "foo", #{time => 0}),
-    ok = logger:update_handler_config(example, config, #{fields => [syslog_timestamp]}),
-    {log, <<"MESSAGE=foo\nSYSLOG_TIMESTAMP=1970-01-01T00:00:00.000000Z\n">>} = log(debug, "foo", #{time => 0}),
+    {log, <<"MESSAGE=foo\nTIME=1970-01-01T00:00:00.000000Z\n">>} = log(
+        debug,
+        "foo",
+        #{time => 0}
+    ),
+    ok = logger:update_handler_config(example, config, #{
+        fields => [syslog_timestamp]
+    }),
+    {log, <<"MESSAGE=foo\nSYSLOG_TIMESTAMP=1970-01-01T00:00:00.000000Z\n">>} = log(
+        debug,
+        "foo",
+        #{time => 0}
+    ),
 
     % `os_pid' returns curent OS PID
     ok = logger:update_handler_config(example, config, #{fields => [os_pid]}),
     OsPid = iolist_to_binary(os:getpid()),
-    ?assertEqual({log, <<"MESSAGE=foo\nOS_PID=", OsPid/binary, "\n">>}, log(debug, "foo", #{})),
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nOS_PID=", OsPid/binary, "\n">>},
+        log(debug, "foo", #{})
+    ),
     ok = logger:update_handler_config(example, config, #{fields => [syslog_pid]}),
-    ?assertEqual({log, <<"MESSAGE=foo\nSYSLOG_PID=", OsPid/binary, "\n">>}, log(debug, "foo", #{})),
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nSYSLOG_PID=", OsPid/binary, "\n">>},
+        log(debug, "foo", #{})
+    ),
 
     % `pid' is printed as Erlang PID
     ok = logger:update_handler_config(example, config, #{fields => [pid]}),
     Pid = iolist_to_binary(pid_to_list(self())),
-    ?assertEqual({log, <<"MESSAGE=foo\nPID=", Pid/binary, "\n">>}, log(debug, "foo", #{})),
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nPID=", Pid/binary, "\n">>},
+        log(debug, "foo", #{})
+    ),
 
     % Simple metadata access
     ok = logger:update_handler_config(example, config, #{fields => [foo]}),
@@ -225,26 +270,39 @@ output(_Config) ->
     {log, <<"MESSAGE=foo\nFOO=[]\n">>} = log(debug, "foo", #{foo => []}),
     {log, <<"MESSAGE=foo\nFOO=[1000]\n">>} = log(debug, "foo", #{foo => [1000]}),
     {log, <<"MESSAGE=foo\nFOO={}\n">>} = log(debug, "foo", #{foo => {}}),
-    {log, <<"MESSAGE=foo\nFOO={foo,1}\n">>} = log(debug, "foo", #{foo => {foo,1}}),
+    {log, <<"MESSAGE=foo\nFOO={foo,1}\n">>} = log(debug, "foo", #{
+        foo => {foo, 1}
+    }),
     Ref = make_ref(),
     BinRef = iolist_to_binary(ref_to_list(Ref)),
-    ?assertEqual({log, <<"MESSAGE=foo\nFOO=", BinRef/binary, "\n">>}, log(debug, "foo", #{foo => Ref})),
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nFOO=", BinRef/binary, "\n">>},
+        log(debug, "foo", #{foo => Ref})
+    ),
     % Do not fail when trying to format function
     Func = fun(A) -> A + 1 end,
     {log, <<"MESSAGE=foo\nFOO=", _/binary>>} = log(debug, "foo", #{foo => Func}),
 
     % Nested metadata access
-    ok = logger:update_handler_config(example, config, #{fields => [{"FOO", [foo, bar]}]}),
+    ok = logger:update_handler_config(example, config, #{
+        fields => [{"FOO", [foo, bar]}]
+    }),
     {log, <<"MESSAGE=foo\nFOO=\n">>} = log(debug, "foo", #{}),
     {log, <<"MESSAGE=foo\nFOO=\n">>} = log(debug, "foo", #{foo => 1}),
     {log, <<"MESSAGE=foo\nFOO=1\n">>} = log(debug, "foo", #{foo => #{bar => 1}}),
 
     % Literal field values
-    ok = logger:update_handler_config(example, config, #{fields => [{"FOO", "BAR"}]}),
+    ok = logger:update_handler_config(example, config, #{
+        fields => [{"FOO", "BAR"}]
+    }),
     {log, <<"MESSAGE=foo\nFOO=BAR\n">>} = log(debug, "foo", #{}),
-    ok = logger:update_handler_config(example, config, #{fields => [{"FOO", <<"BAR">>}]}),
+    ok = logger:update_handler_config(example, config, #{
+        fields => [{"FOO", <<"BAR">>}]
+    }),
     {log, <<"MESSAGE=foo\nFOO=BAR\n">>} = log(debug, "foo", #{}),
-    ok = logger:update_handler_config(example, config, #{fields => [{"FOO", [$B, <<"A">>, "R"]}]}),
+    ok = logger:update_handler_config(example, config, #{
+        fields => [{"FOO", [$B, <<"A">>, "R"]}]
+    }),
     {log, <<"MESSAGE=foo\nFOO=BAR\n">>} = log(debug, "foo", #{}),
 
     % Empty messages aren't sent at all
@@ -255,9 +313,11 @@ output(_Config) ->
 
 filter_config(_Config) ->
     % Starts handler process when adding handler
-    ok = logger:add_handler(example,
-                            systemd_journal_h,
-                            #{formatter => {dumb_formatter, #{}}}),
+    ok = logger:add_handler(
+        example,
+        systemd_journal_h,
+        #{formatter => {dumb_formatter, #{}}}
+    ),
     {ok, #{config := Config}} = logger:get_handler_config(example),
 
     ?assertNot(maps:is_key(pid, Config)),
@@ -268,15 +328,14 @@ filter_config(_Config) ->
 % -----------------------------------------------------------------------------
 % Internal
 
-log(Level,Msg,Meta) ->
+log(Level, Msg, Meta) ->
     logger:log(Level, Msg, add_time(Meta)),
     receive
         {log, Data} -> {log, Data}
-    after
-        100 -> nolog
+    after 100 -> nolog
     end.
 
-add_time(#{time := _}=Meta) ->
+add_time(#{time := _} = Meta) ->
     Meta;
 add_time(Meta) ->
     Meta#{time => logger:timestamp()}.

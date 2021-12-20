@@ -105,6 +105,9 @@
 %%      <dd>Calling function presented in form `Module:Function/Arity'.</dd>
 %%      <dt>`time'</dt>
 %%      <dd>Timestamp of log message presented in RFC3339 format in UTC.</dd>
+%%      <dt>`script_id'</dt>
+%%      <dd>String in form of `{Name} {Vsn}' where `Name' and `Vsn' are replaced
+%%      by 1st and 2nd value in tuple returned by `init:script_id()'</dt>
 %% </dl>
 %%
 %% Otherwise field is treated as a entry key where `key' is equivalent of
@@ -119,6 +122,8 @@
 %%      <dd>Will work exactly the same as `{"SYSLOG_PID", os_pid}'.</dd>
 %%      <dt>`syslog_timestamp'</dt>
 %%      <dd>Will work exactly the same as `{"SYSLOG_TIMESTAMP", time}'.</dd>
+%%      <dt>`syslog_identifier'</dt>
+%%      <dd>Will work exactly the saem as `{"SYSLOG_IDENTIFIER", script_id}'.</dd>
 %% </dl>
 %%
 %% @since 0.3.0
@@ -132,38 +137,48 @@
 -define(JOURNAL_SOCKET, <<"/run/systemd/journal/socket">>).
 
 % logger handler callbacks
--export([adding_handler/1,
-         changing_config/3,
-         filter_config/1,
-         removing_handler/1,
-         log/2]).
+-export([
+    adding_handler/1,
+    changing_config/3,
+    filter_config/1,
+    removing_handler/1,
+    log/2
+]).
 
 % gen_server callbacks
--export([start_link/2,
-         init/1,
-         handle_load/2,
-         handle_call/3,
-         handle_cast/2]).
+-export([
+    start_link/2,
+    init/1,
+    handle_load/2,
+    handle_call/3,
+    handle_cast/2
+]).
 
 -define(FORMATTER, {logger_formatter, #{}}).
--define(CHILD_SPEC(Id, Args), #{id => Id,
-                                start => {?MODULE, start_link, Args},
-                                restart => temporary}).
+-define(CHILD_SPEC(Id, Args), #{
+    id => Id,
+    start => {?MODULE, start_link, Args},
+    restart => temporary
+}).
 
--define(DEFAULT_FIELDS, [{"SYSLOG_TIMESTAMP", time},
-                         {"SYSLOG_PID", os_pid},
-                         {"PRIORITY", priority},
-                         {"ERL_PID", pid},
-                         {"CODE_FILE", file},
-                         {"CODE_LINE", line},
-                         {"CODE_MFA", mfa}]).
+-define(DEFAULT_FIELDS, [
+    {"SYSLOG_TIMESTAMP", time},
+    {"SYSLOG_PID", os_pid},
+    {"SYSLOG_IDENTIFIER", script_id},
+    {"PRIORITY", priority},
+    {"ERL_PID", pid},
+    {"CODE_FILE", file},
+    {"CODE_LINE", line},
+    {"CODE_MFA", mfa}
+]).
 
 % -----------------------------------------------------------------------------
 % Logger Handler
 
 %% @hidden
--spec adding_handler(logger:handler_config()) -> {ok, logger:handler_config()} |
-                                                 {error, term()}.
+-spec adding_handler(logger:handler_config()) ->
+    {ok, logger:handler_config()}
+    | {error, term()}.
 adding_handler(HConfig) ->
     Config0 = maps:get(config, HConfig, #{}),
     case get_path(Config0) of
@@ -176,18 +191,25 @@ adding_handler(HConfig) ->
 do_add_handler(Path, Config, #{id := Id} = HConfig) ->
     case validate_config(Config) of
         ok ->
-            Fields = [translate_field(Field)
-                      || Field <- maps:get(fields, Config, ?DEFAULT_FIELDS)],
+            Fields = [
+                translate_field(Field)
+             || Field <- maps:get(fields, Config, ?DEFAULT_FIELDS)
+            ],
             case start_connection(Id, Config) of
                 {ok, Pid, OlpRef} ->
-                    {ok, HConfig#{config => Config#{pid => Pid,
-                                                    fields => Fields,
-                                                    olp_ref => OlpRef,
-                                                    path => Path}}};
+                    {ok, HConfig#{
+                        config => Config#{
+                            pid => Pid,
+                            fields => Fields,
+                            olp_ref => OlpRef,
+                            path => Path
+                        }
+                    }};
                 Err ->
                     Err
             end;
-        Error -> Error
+        Error ->
+            Error
     end.
 
 -ifdef(TEST).
@@ -209,15 +231,17 @@ changing_config(update, #{config := OldHConfig}, NewConfig) ->
     NewHConfig = maps:get(config, NewConfig, #{}),
     case validate_config(NewHConfig) of
         ok ->
-            Fields = case maps:is_key(fields, NewHConfig) of
-                         true ->
-                             NewFields = maps:get(fields, NewHConfig),
-                             [translate_field(Field) || Field <- NewFields];
-                         false ->
-                             maps:get(fields, OldHConfig)
-                     end,
+            Fields =
+                case maps:is_key(fields, NewHConfig) of
+                    true ->
+                        NewFields = maps:get(fields, NewHConfig),
+                        [translate_field(Field) || Field <- NewFields];
+                    false ->
+                        maps:get(fields, OldHConfig)
+                end,
             {ok, NewConfig#{config => OldHConfig#{fields := Fields}}};
-        Error -> Error
+        Error ->
+            Error
     end;
 changing_config(set, #{config := OldHConfig}, NewConfig) ->
     NewHConfig = maps:get(config, NewConfig, #{}),
@@ -226,7 +250,8 @@ changing_config(set, #{config := OldHConfig}, NewConfig) ->
             Fields = maps:get(fields, NewHConfig, ?DEFAULT_FIELDS),
             Formatted = [translate_field(Field) || Field <- Fields],
             {ok, NewConfig#{config => OldHConfig#{fields := Formatted}}};
-        Error -> Error
+        Error ->
+            Error
     end.
 
 translate_field(syslog_timestamp) -> {"SYSLOG_TIMESTAMP", time};
@@ -243,34 +268,48 @@ do_validate([{fields, Fields} | Rest]) ->
         ok -> do_validate(Rest);
         Error -> Error
     end;
-do_validate([{sync_mode_qlen, _} | Rest]) -> do_validate(Rest);
-do_validate([{drop_mode_qlen, _} | Rest]) -> do_validate(Rest);
-do_validate([{flush_qlen, _} | Rest]) -> do_validate(Rest);
-do_validate([{burst_limit_enable, _} | Rest]) -> do_validate(Rest);
-do_validate([{burst_limit_max_count, _} | Rest]) -> do_validate(Rest);
-do_validate([{burst_limit_window_time, _} | Rest]) -> do_validate(Rest);
-do_validate([{overload_kill_enable, _} | Rest]) -> do_validate(Rest);
-do_validate([{overload_kill_qlen, _} | Rest]) -> do_validate(Rest);
-do_validate([{overload_kill_mem_size, _} | Rest]) -> do_validate(Rest);
-do_validate([{overload_kill_restart_after, _} | Rest]) -> do_validate(Rest);
-do_validate([]) -> ok;
+do_validate([{sync_mode_qlen, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{drop_mode_qlen, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{flush_qlen, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{burst_limit_enable, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{burst_limit_max_count, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{burst_limit_window_time, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{overload_kill_enable, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{overload_kill_qlen, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{overload_kill_mem_size, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([{overload_kill_restart_after, _} | Rest]) ->
+    do_validate(Rest);
+do_validate([]) ->
+    ok;
 do_validate([Option | _]) ->
     {error, {invalid_option, Option}}.
 
 -define(IS_STRING(Name), (is_binary(Name) orelse is_list(Name))).
 
-check_fields([Atom | Rest])
-  when is_atom(Atom) ->
+check_fields([Atom | Rest]) when
+    is_atom(Atom)
+->
     Name = atom_to_list(Atom),
     case check_name(Name) of
         true -> check_fields(Rest);
         false -> {error, {name_invalid, Name}}
     end;
-check_fields([{Atom, _} | Rest])
-  when is_atom(Atom) ->
+check_fields([{Atom, _} | Rest]) when
+    is_atom(Atom)
+->
     check_fields([Atom | Rest]);
-check_fields([{Name, _} | Rest])
-  when ?IS_STRING(Name) ->
+check_fields([{Name, _} | Rest]) when
+    ?IS_STRING(Name)
+->
     case check_name(unicode:characters_to_list(Name)) of
         true -> check_fields(Rest);
         false -> {error, {name_invalid, Name}}
@@ -280,19 +319,21 @@ check_fields([]) ->
 check_fields([Unknown | _]) ->
     {error, {invalid_field, Unknown}}.
 
-check_name([C|Rest])
-  when $A =< C, C =< $Z;
-       $a =< C, C =< $z;
-       $0 =< C, C =< $9 ->
+check_name([C | Rest]) when
+    $A =< C, C =< $Z;
+    $a =< C, C =< $z;
+    $0 =< C, C =< $9
+->
     check_name_rest(Rest);
 check_name(_) ->
     false.
 
-check_name_rest([C|Rest])
-  when $A =< C, C =< $Z;
-       $a =< C, C =< $z;
-       $0 =< C, C =< $9;
-       C == $_ ->
+check_name_rest([C | Rest]) when
+    $A =< C, C =< $Z;
+    $a =< C, C =< $z;
+    $0 =< C, C =< $9;
+    C == $_
+->
     check_name_rest(Rest);
 check_name_rest([]) ->
     true;
@@ -325,28 +366,41 @@ log(LogEvent, #{config := Config} = HConfig) ->
     Msg0 = FMod:format(LogEvent, FConf),
     case string:is_empty(Msg0) of
         false ->
-            FieldsData = [{Name, get_field(Field, LogEvent)}
-                          || {Name, Field} <- Fields],
+            FieldsData = [
+                {Name, get_field(Field, LogEvent)}
+             || {Name, Field} <- Fields
+            ],
             Msg = unicode:characters_to_binary(Msg0),
             Data = systemd_protocol:encode([{"MESSAGE", Msg} | FieldsData]),
             ok = enough:load(OlpRef, {send, Data, Path});
-        true -> ok
+        true ->
+            ok
     end.
 
 get_field(os_pid, _LogEvent) ->
     os:getpid();
 get_field(time, #{meta := #{time := Time}}) ->
-    calendar:system_time_to_rfc3339(Time, [{unit, microsecond},
-                                           {offset, "Z"}]);
+    calendar:system_time_to_rfc3339(Time, [
+        {unit, microsecond},
+        {offset, "Z"}
+    ]);
 get_field(mfa, #{meta := #{mfa := {M, F, A}}}) ->
     io_lib:format("~tp:~tp/~B", [M, F, A]);
 get_field(priority, #{level := Level}) ->
     level_to_char(Level);
 get_field(level, #{level := Level}) ->
     atom_to_binary(Level, utf8);
-get_field(Metakey, #{meta := Meta})
-  when is_atom(Metakey) orelse
-       (is_list(Metakey) andalso is_atom(hd(Metakey))) ->
+get_field(script_id, _Meta) ->
+    case init:script_id() of
+        {Name, Vsn} ->
+            [Name, " ", Vsn];
+        _ ->
+            <<"beam">>
+    end;
+get_field(Metakey, #{meta := Meta}) when
+    is_atom(Metakey) orelse
+        (is_list(Metakey) andalso is_atom(hd(Metakey)))
+->
     case get_meta(Metakey, Meta) of
         undefined -> "";
         Data -> to_string(Data)
@@ -392,13 +446,13 @@ printable_list([]) ->
 printable_list(X) ->
     io_lib:printable_list(X).
 
-level_to_char(debug)     -> "7";
-level_to_char(info)      -> "6";
-level_to_char(notice)    -> "5";
-level_to_char(warning)   -> "4";
-level_to_char(error)     -> "3";
-level_to_char(critical)  -> "2";
-level_to_char(alert)     -> "1";
+level_to_char(debug) -> "7";
+level_to_char(info) -> "6";
+level_to_char(notice) -> "5";
+level_to_char(warning) -> "4";
+level_to_char(error) -> "3";
+level_to_char(critical) -> "2";
+level_to_char(alert) -> "1";
 level_to_char(emergency) -> "0".
 
 % -----------------------------------------------------------------------------
@@ -406,17 +460,21 @@ level_to_char(emergency) -> "0".
 
 %% @hidden
 start_link(Id, Opts0) ->
-    Opts = maps:with([
-    sync_mode_qlen,
-    drop_mode_qlen,
-    flush_qlen,
-    burst_limit_enable,
-    burst_limit_max_count,
-    burst_limit_window_time,
-    overload_kill_enable,
-    overload_kill_qlen,
-    overload_kill_mem_size,
-    overload_kill_restart_after], Opts0),
+    Opts = maps:with(
+        [
+            sync_mode_qlen,
+            drop_mode_qlen,
+            flush_qlen,
+            burst_limit_enable,
+            burst_limit_max_count,
+            burst_limit_window_time,
+            overload_kill_enable,
+            overload_kill_qlen,
+            overload_kill_mem_size,
+            overload_kill_restart_after
+        ],
+        Opts0
+    ),
     enough:start_link(Id, ?MODULE, [], Opts).
 
 %% @hidden
