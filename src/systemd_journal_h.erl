@@ -107,7 +107,7 @@
 %%      <dd>Timestamp of log message presented in RFC3339 format in UTC.</dd>
 %%      <dt>`script_id'</dt>
 %%      <dd>String in form of `{Name} {Vsn}' where `Name' and `Vsn' are replaced
-%%      by 1st and 2nd value in tuple returned by `init:script_id()'</dt>
+%%      by 1st and 2nd value in tuple returned by `init:script_id()'</dd>
 %% </dl>
 %%
 %% Otherwise field is treated as a entry key where `key' is equivalent of
