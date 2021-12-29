@@ -77,7 +77,7 @@
 
 -export([auto_install/0]).
 
-%% @hidden
+%% @private
 -spec check_config(logger:formatter_config()) -> ok | {error, term()}.
 check_config(Config0) ->
     case maps:take(parent, Config0) of
@@ -90,7 +90,7 @@ check_config(Config0) ->
             logger_formatter:check_config(Config0)
     end.
 
-%% @hidden
+%% @private
 -spec format(logger:log_event(), logger:formatter_config()) ->
     unicode:chardata().
 format(#{level := Level} = LogEvent, Config0) ->
@@ -116,7 +116,7 @@ prefix_lines(String, Prefix) ->
     Splitted = string:split(String, "\n", all),
     lists:map(fun(Elem) -> [Prefix, Elem, $\n] end, Splitted).
 
-%% @hidden Automatically install kmsg formatter for all handlers that use
+%% @private Automatically install kmsg formatter for all handlers that use
 %% logger_std_h and points to journal stream
 auto_install() ->
     [

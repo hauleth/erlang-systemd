@@ -15,7 +15,7 @@
 %% specific language governing permissions and limitations
 %% under the License.
 %%
-%% @hidden
+%% @private
 
 -module(systemd_socket).
 
@@ -77,6 +77,9 @@ send_msg({Socket, Address}, Message, Pid, Fds) ->
         {error, _} = Error -> Error
     end.
 
+%% @TODO Implement this when there will be a reliable way to encode
+%% `cmsg_send()' with `credentials' type and there will be a way to get other
+%% process informations from the OS (`GID', `EGID', `UID', and `EUID').
 encode_auth(0) -> [];
 encode_auth(_) -> erlang:error(unimplemented).
 

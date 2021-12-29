@@ -15,7 +15,7 @@
 %% specific language governing permissions and limitations
 %% under the License.
 %%
-%% @hidden
+%% @private
 
 -module(systemd_app).
 

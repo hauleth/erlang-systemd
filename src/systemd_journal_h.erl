@@ -37,6 +37,7 @@
 %%       ```
 %%       [syslog_timestamp,
 %%        syslog_pid,
+%%        syslog_identifier,
 %%        priority,
 %%        {"ERL_PID", pid},
 %%        {"CODE_FILE", file},
@@ -79,7 +80,7 @@
 %% Metakeys (i.e. atoms) in `fields' list will be sent to
 %% the `journald' as a uppercased atom names.
 %%
-%% Entries in form of `{Name :: field_name(), metakey()}' will use `Name'
+%% Entries in form of `{Name :: field_name(), logger_formatter:metakey()}' will use `Name'
 %% as the field name. `Name' will be checked if it is correct `journald' field
 %% name (i.e. contains only ASCII letters, digits, and underscores,
 %% additionally do not start with underscore).
@@ -136,6 +137,8 @@
 
 -define(JOURNAL_SOCKET, <<"/run/systemd/journal/socket">>).
 
+-export_type([field_definition/0, field_name/0, field_value/0]).
+
 % logger handler callbacks
 -export([
     adding_handler/1,
@@ -154,6 +157,11 @@
     handle_cast/2
 ]).
 
+-type field_definition() :: {Name :: field_name(), Data :: field_value()}.
+
+-type field_name() :: unicode:chardata().
+-type field_value() :: logger_formatter:metakey() | iolist().
+
 -define(FORMATTER, {logger_formatter, #{}}).
 -define(CHILD_SPEC(Id, Args), #{
     id => Id,
@@ -162,10 +170,10 @@
 }).
 
 -define(DEFAULT_FIELDS, [
-    {"SYSLOG_TIMESTAMP", time},
-    {"SYSLOG_PID", os_pid},
-    {"SYSLOG_IDENTIFIER", script_id},
-    {"PRIORITY", priority},
+    syslog_timestamp,
+    syslog_pid,
+    syslog_identifier,
+    priority,
     {"ERL_PID", pid},
     {"CODE_FILE", file},
     {"CODE_LINE", line},
@@ -175,7 +183,7 @@
 % -----------------------------------------------------------------------------
 % Logger Handler
 
-%% @hidden
+%% @private
 -spec adding_handler(logger:handler_config()) ->
     {ok, logger:handler_config()}
     | {error, term()}.
@@ -226,7 +234,7 @@ get_path(Config) ->
     end.
 -endif.
 
-%% @hidden
+%% @private
 changing_config(update, #{config := OldHConfig}, NewConfig) ->
     NewHConfig = maps:get(config, NewConfig, #{}),
     case validate_config(NewHConfig) of
@@ -340,7 +348,7 @@ check_name_rest([]) ->
 check_name_rest(_) ->
     false.
 
-%% @hidden
+%% @private
 -spec filter_config(logger:handler_config()) -> logger:handler_config().
 filter_config(#{config := Config0} = HConfig) ->
     Config = maps:without([pid, olp_ref, path], Config0),
@@ -352,13 +360,13 @@ start_connection(Id, Config) ->
         {error, Error} -> {error, {spawn_error, Error}}
     end.
 
-%% @hidden
+%% @private
 -spec removing_handler(logger:handler_config()) -> ok.
 removing_handler(#{config := #{pid := Pid}}) ->
     ok = enough:stop(Pid),
     ok.
 
-%% @hidden
+%% @private
 -spec log(logger:log_event(), logger:handler_config()) -> ok.
 log(LogEvent, #{config := Config} = HConfig) ->
     #{olp_ref := OlpRef, path := Path, fields := Fields} = Config,
@@ -458,7 +466,7 @@ level_to_char(emergency) -> "0".
 % -----------------------------------------------------------------------------
 % Socket handler
 
-%% @hidden
+%% @private
 start_link(Id, Opts0) ->
     Opts = maps:with(
         [
@@ -477,21 +485,21 @@ start_link(Id, Opts0) ->
     ),
     enough:start_link(Id, ?MODULE, [], Opts).
 
-%% @hidden
+%% @private
 init(_Arg) ->
     % We never receive on this socket, so we set {active, false}
     {ok, Socket} = gen_udp:open(0, [binary, local, {active, false}]),
     {ok, Socket}.
 
-%% @hidden
+%% @private
 handle_load({send, Message, Path}, Socket) ->
     gen_udp:send(Socket, Path, Message),
     Socket.
 
-%% @hidden
+%% @private
 handle_call(stop, _Ref, Socket) ->
     {stop, normal, ok, Socket}.
 
-%% @hidden
+%% @private
 handle_cast(_Msg, Socket) ->
     {noreply, Socket}.

@@ -193,6 +193,10 @@ ready(Status) ->
     Up = [{"MAINPID", os:getpid()}, ready, {status, Status}],
     set_status(#{up => Up}).
 
+-spec set_status(Statuses) -> supervisor:child_spec() when
+      Statuses :: MapStatuses | ListStatuses,
+      ListStatuses :: [{up | down, state()}],
+      MapStatuses :: #{up := state(), down := state()}.
 set_status(List) when is_list(List) ->
     set_status(maps:from_list(List));
 set_status(Map) ->
@@ -204,7 +208,7 @@ set_status(Map) ->
         restart => temporary
     }.
 
-%% @hidden helper for `ready/0' function that spawn process that notify about
+%% @private helper for `ready/0' function that spawn process that notify about
 %% application readiness.
 notify_spawn(Up, Down) ->
     Parent = self(),
@@ -228,7 +232,16 @@ notify_loop(Parent, Down) ->
 try_notify(undefined) -> ok;
 try_notify(Message) -> notify(Message).
 
+%% @equiv reload([])
 reload() -> reload([]).
+%% @doc Restart VM with informing the systemd about reload.
+%%
+%% This is esentially the same as `init:restart(Opts)' with the difference that
+%% it will inform the systemd that the system is reloading instead of shutting
+%% down. If you use `init:restart/{0,1}' anywhere in your application you need
+%% to change it to this function otherwise your application may be forced to
+%% exit by systemd on reloads.
+%% @end
 reload(Opts) ->
     persistent_term:put({?MODULE, shutdown}, reloading),
     init:restart(Opts).
@@ -376,8 +389,9 @@ listen_fds() ->
 %%
 %% == Warning ==
 %% This currently assumes that the currently used ABI is using 32-bit `int's.
-%% This is true at least for IA-32, x86-64, AArch64, AArch32, SPARC, OpenRISC,
-%% and RISC-V.
+%% This is true for Linux at least for IA-32, x86-64, AArch64, AArch32, SPARC,
+%% OpenRISC, and RISC-V (required by POSIX). So while that shouldn't cause any
+%% problems, beware, that currently it may fail on some exotic platforms.
 %%
 %% @returns `ok' on success, `{error, bad_descriptor}' if any file descriptor in
 %% the passed list is invalid (isn't file desciptor or is closed).
