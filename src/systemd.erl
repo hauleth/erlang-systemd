@@ -194,9 +194,9 @@ ready(Status) ->
     set_status(#{up => Up}).
 
 -spec set_status(Statuses) -> supervisor:child_spec() when
-      Statuses :: MapStatuses | ListStatuses,
-      ListStatuses :: [{up | down, state()}],
-      MapStatuses :: #{up := state(), down := state()}.
+    Statuses :: MapStatuses | ListStatuses,
+    ListStatuses :: [{up | down, state()}],
+    MapStatuses :: #{up := state(), down := state()}.
 set_status(List) when is_list(List) ->
     set_status(maps:from_list(List));
 set_status(Map) ->
