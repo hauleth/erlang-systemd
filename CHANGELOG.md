@@ -1,14 +1,17 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v0.6.2"></a>
+## [v0.6.2] - 2021-12-30
 ### Bug Fixes
-- docs for `systemd_journal_h`
+- docs for `systemd_journal_h` ([`9979ba5`](https://github.com/hauleth/erlang-systemd/commit/9979ba53c8a0c8d02294cbfb5bf4ba3be4ab4da0))
 
 ### Documentation
-- add syntax highlighting on systemd example
+- add syntax highlighting on systemd example ([`a580cab`](https://github.com/hauleth/erlang-systemd/commit/a580cab9808d0aa8b1ad10fa18409af3c940f1a5))
 
 ### Features
-- add functions to set custom status
+- add functions to set custom status ([`9342d36`](https://github.com/hauleth/erlang-systemd/commit/9342d3654981044a3fcbf67fef7fc41cd855b946))
 
 
 <a name="v0.6.1"></a>
@@ -135,7 +138,8 @@
 <a name="0.1.0"></a>
 ## 0.1.0 - 2020-01-15
 
-[Unreleased]: https://github.com/hauleth/erlang-systemd/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/hauleth/erlang-systemd/compare/v0.6.2...HEAD
+[v0.6.2]: https://github.com/hauleth/erlang-systemd/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/hauleth/erlang-systemd/compare/0.6.0...v0.6.1
 [0.6.0]: https://github.com/hauleth/erlang-systemd/compare/0.5.3...0.6.0
 [0.5.3]: https://github.com/hauleth/erlang-systemd/compare/0.5.2...0.5.3
