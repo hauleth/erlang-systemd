@@ -1,7 +1,7 @@
 NAME = echo
 RUN_COMMAND = foreground
 
-SOCKETS = echo-tcp echo-udp
+SOCKETS = echo-tcp.socket echo-udp.socket
 
 include ../utils.mk
 

@@ -5,8 +5,10 @@ SOCKETS ?= $(NAME).socket
 
 UNITS = $(notdir $(wildcard systemd/*))
 
-start: install
-	-for unit in ${SOCKETS}; do sudo systemctl start $$unit; done
+all: install start
+
+start: systemd
+	sudo systemctl start ${SOCKETS}
 
 test: release
 	systemd-socket-activate -l 8080 _build/prod/rel/$(NAME)/bin/$(NAME) $(RUN_COMMAND)
@@ -21,7 +23,7 @@ systemd:
 	sudo cp -f systemd/* ${SYSTEMD_TARGET}
 	@sudo chmod 644 $(addprefix ${SYSTEMD_TARGET}/,${UNITS})
 	@sudo systemctl daemon-reload
-	-for unit in ${UNITS}; do sudo systemctl stop $$unit || true; done
+	sudo systemctl stop ${UNITS}
 
 uninstall:
 	-sudo rm $(addprefix ${SYSTEMD_TARGET}/,${UNITS})

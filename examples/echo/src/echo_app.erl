@@ -39,10 +39,4 @@ get_ports() ->
               {UdpFd, "udp"} -> {fd, UdpFd};
               _ -> {port, 7777}
           end,
-    ?LOG_NOTICE(#{tcp => socket_info(Tcp), udp => socket_info(Udp)}),
     #{tcp => Tcp, udp => Udp}.
-
-socket_info({fd, FD}) ->
-    {ok, S} = socket:open(FD),
-    socket:info(S);
-socket_info(_) -> nofd.

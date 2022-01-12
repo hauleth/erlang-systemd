@@ -33,7 +33,7 @@ defmodule PlugSystemdExample.Application do
     children = [
       {Plug.Cowboy, cowboy_opts},
       # Notify systemd that application is ready for work
-      :systemd.ready("ready"),
+      :systemd.ready(),
       :systemd.set_status(down: [status: "drained"]),
       # # Wait for all connections to end before shutting down
       {Plug.Cowboy.Drainer, refs: :all, shutdown: 10_000},

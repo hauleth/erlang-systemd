@@ -1,7 +1,8 @@
 [Unit]
 Description=Example Plug application
-Requires=epmd.socket plug.socket
+Requires=epmd.socket
 After=plug.socket
+BindsTo=plug.socket
 
 [Service]
 # Create required directories configure HOME
@@ -10,7 +11,7 @@ RuntimeDirectory=%N
 
 # Do not start EPMD as this is managed by `epmd.socket`
 Environment='ERL_FLAGS=-start_epmd false'
-; -kernel inet_backend socket'
+# -kernel inet_backend socket'
 
 DynamicUser=true
 Type=notify
@@ -19,9 +20,3 @@ WatchdogSec=1min
 NotifyAccess=main
 Restart=on-failure
 KillMode=mixed
-
-# Security options
-# Disable crash dump
-Environment=ERL_CRASH_DUMP_SECONDS=0
-# Protect directories and create private FS
-PrivateDevices=yes

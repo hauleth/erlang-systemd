@@ -23,8 +23,6 @@
 
 -define(NAME, ?MODULE).
 
--include_lib("kernel/include/logger.hrl").
-
 -export([send/3]).
 
 -export([

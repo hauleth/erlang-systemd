@@ -1,6 +1,7 @@
 [Unit]
 Description=Erlang Echo service - UDP
 Requires=sockets.target
+PartOf=echo-udp.socket
 
 [Socket]
 FileDescriptorName=udp
