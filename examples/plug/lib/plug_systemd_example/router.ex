@@ -29,7 +29,7 @@ defmodule PlugSystemdExample.Router do
       :init.stop(status)
     end)
 
-    send_resp(conn, 200, "Shutting down whith status #{status}\n")
+    send_resp(conn, 200, "Shutting down with status #{status}\n")
   end
 
   # Trigger watchdog
