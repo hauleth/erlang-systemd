@@ -238,7 +238,7 @@ output(_Config) ->
         #{time => 0}
     ),
 
-    % `os_pid' returns curent OS PID
+    % `os_pid' returns current OS PID
     ok = logger:update_handler_config(example, config, #{fields => [os_pid]}),
     OsPid = iolist_to_binary(os:getpid()),
     ?assertEqual(

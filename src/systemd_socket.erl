@@ -77,7 +77,7 @@ send_msg({Socket, Address}, Message, Pid, Fds) ->
 
 %% @TODO Implement this when there will be a reliable way to encode
 %% `cmsg_send()' with `credentials' type and there will be a way to get other
-%% process informations from the OS (`GID', `EGID', `UID', and `EUID').
+%% process information from the OS (`GID', `EGID', `UID', and `EUID').
 encode_auth(0) -> [];
 encode_auth(_) -> erlang:error(unimplemented).
 

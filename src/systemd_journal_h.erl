@@ -88,7 +88,7 @@
 %% Entries in form of `{Name :: field_name(), Data :: iolist()}' will use
 %% `Name' as field name and will contain `Data' as a literal.
 %%
-%% If entry data is empty or not set then it will be ommited in the output.
+%% If entry data is empty or not set then it will be omitted in the output.
 %%
 %% === Special fields ===
 %%
@@ -116,7 +116,7 @@
 %%
 %% === Syslog compatibility ===
 %%
-%% To provide better compatibility and user convinience:
+%% To provide better compatibility and user convenience:
 %%
 %% <dl>
 %%      <dt>`syslog_pid'</dt>
@@ -124,7 +124,7 @@
 %%      <dt>`syslog_timestamp'</dt>
 %%      <dd>Will work exactly the same as `{"SYSLOG_TIMESTAMP", time}'.</dd>
 %%      <dt>`syslog_identifier'</dt>
-%%      <dd>Will work exactly the saem as `{"SYSLOG_IDENTIFIER", script_id}'.</dd>
+%%      <dd>Will work exactly the same as `{"SYSLOG_IDENTIFIER", script_id}'.</dd>
 %% </dl>
 %%
 %% @since 0.3.0

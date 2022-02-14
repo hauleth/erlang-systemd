@@ -27,7 +27,7 @@
 %% This formatter will be automatically registered for all handlers that use
 %% `logger_std_h' with `type' set to one of `standard_io' or `standard_error' if
 %% the respective FDs point to journal that is pointed by `JOURNAL_STREAM' which
-%% is autometically set by systemd if one of the options `StandardOutput' or
+%% is automatically set by systemd if one of the options `StandardOutput' or
 %% `StandardError' is set to `journal'. So if you are using default logger
 %% handler then all you need to do is to set
 %%
@@ -113,8 +113,8 @@ format_level(info) -> ?SD_INFO;
 format_level(debug) -> ?SD_DEBUG.
 
 prefix_lines(String, Prefix) ->
-    Splitted = string:split(String, "\n", all),
-    lists:map(fun(Elem) -> [Prefix, Elem, $\n] end, Splitted).
+    Split = string:split(String, "\n", all),
+    lists:map(fun(Elem) -> [Prefix, Elem, $\n] end, Split).
 
 %% @private Automatically install kmsg formatter for all handlers that use
 %% logger_std_h and points to journal stream

@@ -236,7 +236,7 @@ try_notify(Message) -> notify(Message).
 reload() -> reload([]).
 %% @doc Restart VM with informing the systemd about reload.
 %%
-%% This is esentially the same as `init:restart(Opts)' with the difference that
+%% This is essentially the same as `init:restart(Opts)' with the difference that
 %% it will inform the systemd that the system is reloading instead of shutting
 %% down. If you use `init:restart/{0,1}' anywhere in your application you need
 %% to change it to this function otherwise your application may be forced to
@@ -314,7 +314,7 @@ watchdog(disable) ->
 %%
 %% Note that all other functions in this module are safe to call even on
 %% non-systemd boots (even on non-systemd platforms). You should <b>NOT</b>
-%% protect them with a call to this function. Also note that this checks wheter
+%% protect them with a call to this function. Also note that this checks whether
 %% the system, not the user session, is controlled by systemd. However other
 %% functions will work for both - user and system services.
 %%
@@ -394,7 +394,7 @@ listen_fds() ->
 %% problems, beware, that currently it may fail on some exotic platforms.
 %%
 %% @returns `ok' on success, `{error, bad_descriptor}' if any file descriptor in
-%% the passed list is invalid (isn't file desciptor or is closed).
+%% the passed list is invalid (isn't file descriptor or is closed).
 %%
 %% @since 0.6.0
 %% @end
