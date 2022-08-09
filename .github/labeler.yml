@@ -1,0 +1,20 @@
+scope/example/plug:
+  - any: ['example/plug/**/*']
+
+scope/example/echo:
+  - any: ['example/echo/**/*']
+
+scope/tests:
+  - any: ['test/*']
+
+scope/api:
+  - any: ['src/systemd.erl']
+
+scope/journal:
+  - any: ['src/systemd_journal_h.erl', 'src/systemd_kmsg_formatter.erl']
+
+scope/watchdog:
+  - any: ['src/systemd_watchdog.erl']
+
+scope/ci:
+  - any: ['.github/workflows/*']
