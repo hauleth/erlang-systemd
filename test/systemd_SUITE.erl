@@ -98,10 +98,9 @@ ready(_, Config) ->
 
 ready(Config) ->
     Socket = ?config(socket, Config),
-    OsPid = list_to_binary(os:getpid()),
     {ok, _Pid} = mock_supervisor:start_link([systemd:ready()]),
     ?assertEqual(
-        {ok, <<"MAINPID=", OsPid/binary, "\nREADY=1\n">>},
+        {ok, <<"READY=1\n">>},
         recv(Socket)
     ),
 

@@ -1,4 +1,4 @@
-%% Licensed to the Apache Software Foundation (ASF) under one
+
 %% or more contributor license agreements.  See the NOTICE file
 %% distributed with this work for additional information
 %% regarding copyright ownership.  The ASF licenses this file
@@ -42,6 +42,7 @@
 ]).
 
 -include_lib("kernel/include/file.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 -include("systemd_internal.hrl").
 
@@ -183,21 +184,34 @@ normalize_state({_, _} = Msg) ->
 %% This is meant to be inserted into your supervison tree when application is
 %% ready (usually at the end).
 %% @end
+-spec ready() -> supervisor:child_spec().
 ready() ->
     ready(undefined).
 
+-spec ready(unicode:chardata() | undefined) -> supervisor:child_spec().
 ready(undefined) ->
-    Up = [{"MAINPID", os:getpid()}, ready],
+    Up = [ready],
     set_status(#{up => Up});
 ready(Status) ->
-    Up = [{"MAINPID", os:getpid()}, ready, {status, Status}],
+    Up = [ready, {status, Status}],
     set_status(#{up => Up}).
 
+%% @doc
+%% Returns child spec for task that will set unit status to given values on
+%% startup and shutdown.
+%%
+%% This is helper function that will return `supervisor:child_spec/0' map that
+%% contains temporary job that will set appropriate status message.
+%%
+%% This function can be used to give more detailed information about current
+%% state of the application luke for example information that the connection
+%% draining is enabled.
+%% @end
 -spec set_status(Statuses) -> supervisor:child_spec() when
     Statuses :: MapStatuses | ListStatuses,
-    ListStatuses :: [{up | down, State}],
-    MapStatuses :: #{up => State, down => State},
-    State :: state() | [state()].
+    ListStatuses :: [{up | down, Status}],
+    MapStatuses :: #{up => Status, down => Status},
+    Status :: state() | [state()].
 set_status(List) when is_list(List) ->
     set_status(maps:from_list(List));
 set_status(Map) ->
@@ -223,7 +237,7 @@ notify_init(Parent, Up, Down) ->
 
 notify_loop(Parent, Down) ->
     receive
-        {'EXIT', Parent, _Reason} ->
+        {'EXIT', Parent0, _Reason} when Parent0 =:= Parent ->
             try_notify(Down),
             ok;
         _ ->
@@ -234,6 +248,7 @@ try_notify(undefined) -> ok;
 try_notify(Message) -> notify(Message).
 
 %% @equiv reload([])
+-spec reload() -> ok.
 reload() -> reload([]).
 %% @doc Restart VM with informing the systemd about reload.
 %%
@@ -243,6 +258,7 @@ reload() -> reload([]).
 %% to change it to this function otherwise your application may be forced to
 %% exit by systemd on reloads.
 %% @end
+-spec reload(Opts :: [{mode, init:mode()}]) -> ok.
 reload(Opts) ->
     persistent_term:put({?MODULE, shutdown}, reloading),
     init:restart(Opts).
@@ -332,14 +348,28 @@ booted() ->
         Error -> Error
     end.
 
+%% @private
 is_journal(Type) ->
     case get_journal_stream() of
         {Dev, Inode} ->
             case file_info(Type) of
                 {ok, #file_info{major_device = Dev, inode = Inode}} -> true;
-                _ -> false
+                {ok, #file_info{major_device = RDev, inode = RInode}} ->
+                    ?LOG_DEBUG(#{message => no_journal_attached,
+                                 type => Type,
+                                 expected => {Dev, Inode},
+                                 got => {RDev, RInode}}),
+                    false;
+                {error, Error} ->
+                    ?LOG_DEBUG(#{message => could_not_read_file_info,
+                                 type => Type,
+                                 error => Error}),
+                    false
             end;
         _ ->
+            ?LOG_DEBUG(#{message => unknown_logger_type,
+                         behaviour => ignore,
+                         type => Type}),
             false
     end.
 
