@@ -48,6 +48,8 @@ init([]) ->
     {ok, []};
 init(Address) ->
     {ok, Socket} = socket:open(local, dgram),
+    State = {Socket, Address},
+    _ = send_msg(State, systemd_protocol:encode([{"MAINPID", os:getpid()}]), 0, []),
     {ok, {Socket, Address}}.
 
 handle_call({send, Message, Pid, Fds}, _Ref, State) ->
