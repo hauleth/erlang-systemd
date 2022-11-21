@@ -1,6 +1,6 @@
 [Unit]
 Description=Example Plug application
-Requires=epmd.socket
+; Requires=epmd.socket
 After=plug.socket
 BindsTo=plug.socket
 
@@ -10,7 +10,7 @@ Environment=HOME=/run/%N
 RuntimeDirectory=%N
 
 # Do not start EPMD as this is managed by `epmd.socket`
-Environment='ERL_FLAGS=-start_epmd false'
+; Environment='ERL_FLAGS=-start_epmd false'
 # -kernel inet_backend socket'
 
 DynamicUser=true

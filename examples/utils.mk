@@ -5,13 +5,15 @@ SOCKETS ?= $(NAME).socket
 
 UNITS = $(notdir $(wildcard systemd/*))
 
+PORT ?= 5000
+
 all: install start
 
 start: systemd
 	sudo systemctl start ${SOCKETS}
 
 test: release
-	systemd-socket-activate -l 8080 _build/prod/rel/$(NAME)/bin/$(NAME) $(RUN_COMMAND)
+	systemd-socket-activate -l ${PORT} ${SYSTEMD_SOCKET_OPTS} _build/prod/rel/$(NAME)/bin/$(NAME) $(RUN_COMMAND)
 
 install: systemd install-rel
 
