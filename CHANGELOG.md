@@ -1,6 +1,16 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Bug Fixes
+- fix dialyzer error for systemd:set_status/1
+- **journal_h:** Dialyzer error
+
+### Documentation
+- fix typos
+
+### Features
+- send MAINPID message on socket start
+
 
 <a name="v0.6.2"></a>
 ## [v0.6.2] - 2021-12-30
