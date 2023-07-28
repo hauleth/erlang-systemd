@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        otp_version: ['24', '23']
+        otp_version: ['26', '25', '24']
     steps:
     - uses: actions/checkout@v1
     - name: Set up Elixir
