@@ -30,6 +30,7 @@ defmodule PlugSystemdExample.MixProject do
     [
       {:plug, "~> 1.0"},
       {:plug_cowboy, "~> 2.0"},
+      {:dialyxir, ">= 0.0.0"},
       {:bandit, ">= 0.0.0"},
       {:systemd, path: "../.."}
     ]

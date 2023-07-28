@@ -497,8 +497,9 @@ handle_load({send, Message, Path}, Socket) ->
     Socket.
 
 %% @private
-handle_call(stop, _Ref, Socket) ->
-    {stop, normal, ok, Socket}.
+handle_call(stop, Ref, Socket) ->
+    gen_server:reply(Ref, ok),
+    {stop, normal, Socket}.
 
 %% @private
 handle_cast(_Msg, Socket) ->
