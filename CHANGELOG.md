@@ -2,6 +2,7 @@
 ## [Unreleased]
 
 ### Bug Fixes
+- typespecs for watchdog/1
 - fix dialyzer error for systemd:set_status/1
 - **journal_h:** Dialyzer error
 
