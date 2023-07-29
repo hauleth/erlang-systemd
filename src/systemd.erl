@@ -273,7 +273,7 @@ reload(Opts) ->
 %% == Arguments ==
 %%
 %% <dl>
-%%      <dt>`watchdog(state) -> sd_timeout()'</dt>
+%%      <dt>`watchdog(state) -> sd_timeout() | false'</dt>
 %%      <dd>Returns state of the Watchdog process. Which either be integer
 %%      representing timeout in microseconds or `false' if Watchdog process is
 %%      disabled.</dd>
