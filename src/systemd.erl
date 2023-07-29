@@ -308,7 +308,7 @@ reload(Opts) ->
 %% @since 0.1.0
 %% @end
 -spec watchdog
-    (state) -> sd_timeout();
+    (state) -> sd_timeout() | false;
     (trigger) -> ok;
     (enable) -> ok;
     (disable) -> ok;
