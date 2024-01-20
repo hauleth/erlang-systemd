@@ -11,6 +11,7 @@
 - fix typos
 
 ### Features
+- add warning log message if there is no readiness message sent
 - send MAINPID message on socket start
 
 
