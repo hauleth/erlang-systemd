@@ -23,6 +23,8 @@
 
 -define(NAME, ?MODULE).
 
+-include_lib("kernel/include/logger.hrl").
+
 -export([send/3]).
 
 -export([
@@ -30,7 +32,7 @@
     init/1,
     handle_call/3,
     handle_cast/2,
-    terminate/2
+    handle_info/2
 ]).
 
 % # Internal interface
@@ -41,6 +43,8 @@ send(Data, Pid, Fds) when is_integer(Pid), is_list(Fds) ->
 
 % # Behaviour implementation
 
+-record(state, {socket, address, timer_ref}).
+
 start_link(Address) ->
     gen_server:start_link({local, ?NAME}, ?MODULE, Address, []).
 
@@ -48,23 +52,27 @@ init([]) ->
     {ok, []};
 init(Address) ->
     {ok, Socket} = socket:open(local, dgram),
-    State = {Socket, Address},
+    TimerRef = set_timer(),
+    State = #state{socket = Socket, address = Address, timer_ref = TimerRef},
     _ = send_msg(State, systemd_protocol:encode([{"MAINPID", os:getpid()}]), 0, []),
-    {ok, {Socket, Address}}.
+    {ok, State}.
 
-handle_call({send, Message, Pid, Fds}, _Ref, State) ->
+handle_call({send, Message, Pid, Fds}, _Ref, State0) ->
+    State = clean_timer(Message, State0),
     {reply, send_msg(State, iolist_to_binary(Message), Pid, Fds), State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-terminate(_Reason, {Socket, _Address}) ->
-    ok = socket:close(Socket),
-    ok.
+handle_info({ready_info, _Time}, State) ->
+    ?LOG_WARNING("systemd haven't received READY=1 message. "
+                 "You may forget to add systemd:ready() to your "
+                 "supervisor children list."),
+    {noreply, State#state{timer_ref = undefined}}.
 
 send_msg([], _Message, _Pid, _Fds) ->
     ok;
-send_msg({Socket, Address}, Message, Pid, Fds) ->
+send_msg(#state{socket = Socket, address = Address}, Message, Pid, Fds) ->
     Addr = #{family => local, path => Address},
     MsgHdr = #{
         addr => Addr,
@@ -77,6 +85,25 @@ send_msg({Socket, Address}, Message, Pid, Fds) ->
         {error, _} = Error -> Error
     end.
 
+set_timer() ->
+    case application:get_env(systemd, warn_about_readiness_message) of
+        {ok, Time} when is_integer(Time), Time > 0 ->
+            erlang:send_after(Time, self(), {ready_info, Time});
+        {ok, false} ->
+            undefined
+    end.
+
+clean_timer(Message, #state{timer_ref = Ref} = State) when is_reference(Ref) ->
+    case string:find(Message, "READY=1\n") of
+        nomatch ->
+            State;
+
+        _ ->
+            _ = erlang:cancel_timer(Ref),
+            State#state{timer_ref = undefined}
+    end;
+clean_timer(_, State) -> State.
+
 %% @TODO Implement this when there will be a reliable way to encode
 %% `cmsg_send()' with `credentials' type and there will be a way to get other
 %% process information from the OS (`GID', `EGID', `UID', and `EUID').
@@ -88,9 +115,9 @@ encode_fds([]) ->
 encode_fds(Fds) when is_list(Fds) ->
     Binary = <<<<Fd:32/native-integer>> || Fd <- Fds>>,
     [
-        #{
-            level => socket,
-            type => rights,
-            data => Binary
-        }
+     #{
+       level => socket,
+       type => rights,
+       data => Binary
+      }
     ].

@@ -16,6 +16,7 @@
         {unset_env, true},
         {auto_formatter, true},
         {watchdog_scale, 2},
+        {warn_about_readiness_message, 10000},
         {logger, [
             {handler, systemd_journal, systemd_journal_h, #{
                 formatter => {logger_formatter, #{template => [msg]}}

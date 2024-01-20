@@ -1,4 +1,4 @@
-
+%% Licensed to the Apache Software Foundation (ASF) under one
 %% or more contributor license agreements.  See the NOTICE file
 %% distributed with this work for additional information
 %% regarding copyright ownership.  The ASF licenses this file
@@ -183,6 +183,14 @@ normalize_state({_, _} = Msg) ->
 %% contains temporary job that will notify systemd about application readiness.
 %% This is meant to be inserted into your supervison tree when application is
 %% ready (usually at the end).
+%%
+%% == Details ==
+%%
+%% There will be warning in the log if there is no readiness message sent within
+%% 10 seconds of the `systemd' application start. That message timeout can be
+%% configured `systemd.warn_about_readiness_message' configuration option, it
+%% can be set either to positive integer which denotes amount of milliseconds
+%% until message, or it can be set to `false' to disable message completely.
 %% @end
 -spec ready() -> supervisor:child_spec().
 ready() ->

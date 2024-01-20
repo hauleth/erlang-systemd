@@ -15,7 +15,7 @@
     recv/1
 ]).
 
-all() -> [notify, ready, listen_fds, socket, fds].
+all() -> [notify, ready, ready_warning, listen_fds, socket, fds].
 
 init_per_testcase(Name, Config0) ->
     PrivDir = ?config(priv_dir, Config0),
@@ -105,6 +105,45 @@ ready(Config) ->
     ),
 
     ok.
+
+ready_warning(init, Config) ->
+    ok = logger:add_handler(send_back,
+                            logger_send_back_h,
+                            #{
+                              config => #{
+                                          pid => self()
+                                         }
+                             }),
+    application:set_env(systemd, warn_about_readiness_message, 1000),
+    Config;
+ready_warning(_, Config) ->
+    _ = logger:remove_handler(send_back),
+    application:set_env(systemd, warn_about_readiness_message, 10000),
+    stop(Config),
+    Config.
+
+ready_warning(Config) ->
+    Socket = ?config(socket, Config),
+    ok = start_with_socket(Socket),
+    ct:sleep(2000),
+    receive
+        #{msg := {string, Msg}, level := warning} ->
+            ?assert(string:find(Msg, "systemd haven't received READY=1") =/= nomatch),
+            ok
+    after
+        0 -> ct:fail("Haven't received any warning message")
+    end,
+    stop(Config),
+
+    ok = start_with_socket(Socket),
+    systemd:notify(ready),
+    ct:sleep(2000),
+    receive
+        #{msg := {string, _Msg}, level := warning} ->
+            ct:fail("Received warning even after sending ready message")
+    after
+        0 -> ok
+    end.
 
 listen_fds(init, Config) ->
     Config;

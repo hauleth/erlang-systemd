@@ -34,7 +34,7 @@
     report_cb/1
 ]).
 
--record(state, {timeout, enabled = true}).
+-record(state, {timeout, enabled}).
 
 start_link(Config) ->
     gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Config, []).
