@@ -4,7 +4,7 @@ systemd
 [![Hex.pm](https://img.shields.io/hexpm/v/systemd?style=flat-square)](https://hex.pm/packages/systemd)
 [![HexDocs](https://img.shields.io/badge/HexDocs-docs-blue?style=flat-square)](https://hexdocs.pm/systemd/)
 [![Hex.pm License](https://img.shields.io/hexpm/l/systemd?style=flat-square)](https://tldrlegal.com/license/apache-license-2.0-(apache-2.0))
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/hauleth/erlang-systemd/Erlang%20CI?style=flat-square)](https://github.com/hauleth/erlang-systemd/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/hauleth/erlang-systemd/erlang.yml?branch=master&style=flat-square)](https://github.com/hauleth/erlang-systemd/actions)
 [![Codecov](https://img.shields.io/codecov/c/gh/hauleth/erlang-systemd?style=flat-square)](https://codecov.io/gh/hauleth/erlang-systemd)
 
 Simple library for notifying systemd about process state.
@@ -14,7 +14,7 @@ Simple library for notifying systemd about process state.
 - `NOTIFY_SOCKET` communication with supervising process.
 - Watchdog process will be started automatically (if not disabled). It will also
   handle sending keep-alive messages automatically.
-- Fetching file descritors passed by the supervisor.
+- Fetching file descriptors passed by the supervisor.
 - `journal` logger handler and formatters.
 
 ## Installation
