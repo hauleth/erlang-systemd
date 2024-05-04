@@ -59,7 +59,8 @@
     store_fds/1,
     clear_fds/1,
     booted/0,
-    is_journal/1
+    is_journal/1,
+    credentials/1
 ]).
 
 -export([notify_spawn/2]).
@@ -400,6 +401,25 @@ file_info(standard_error) ->
     file:read_file_info("/dev/stderr");
 file_info(_) ->
     {error, unknown_device}.
+
+%% ----------------------------------------------------------------------------
+
+%% @doc
+%% Returns path for credentials file.
+%%
+%% Returns `error' when there is no `$CREDENTIALS_DIRECTORY' environment
+%% variable, `{ok, Path}' otherwise.
+%%
+%% For details see [https://systemd.io/CREDENTIALS/]
+%%
+%% @since 0.7.0
+%% @end
+credentials(Name) ->
+    case os:getenv("CREDENTIALS_DIRECTORY") of
+        false -> error;
+        Dir ->
+            {ok, filename:join(Dir, Name)}
+    end.
 
 %% ----------------------------------------------------------------------------
 
