@@ -1,8 +1,4 @@
-{"1.2.0",
-[{<<"enough">>,{pkg,<<"enough">>,<<"0.1.0">>},0}]}.
-[
-{pkg_hash,[
- {<<"enough">>, <<"0254710C52D324E2DADDE54CB56FBB80A792C2EB285669B8379EFD0752BF89F0">>}]},
-{pkg_hash_ext,[
- {<<"enough">>, <<"0460C7ABDA5F5E0EA592B12BC6976B8A5C4B96E42F332059CD396525374BF9A1">>}]}
-].
+[{<<"enough">>,
+  {git,"https://github.com/hauleth/enough",
+       {ref,"9db64b65591c558c00468a109351c000a8887a76"}},
+  0}].
