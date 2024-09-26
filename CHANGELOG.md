@@ -7,6 +7,7 @@
 - **journal_h:** Dialyzer error
 
 ### Documentation
+- fix typo
 - correct the in-doc description of return value for watchdog/1
 - fix typos
 
