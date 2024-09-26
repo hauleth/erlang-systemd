@@ -11,6 +11,7 @@
 - fix typos
 
 ### Features
+- helper function for accessing credentials directory
 - add warning log message if there is no readiness message sent
 - send MAINPID message on socket start
 
