@@ -182,7 +182,7 @@ normalize_state({_, _} = Msg) ->
 %%
 %% This is helper function that will return `supervisor:child_spec/0' map that
 %% contains temporary job that will notify systemd about application readiness.
-%% This is meant to be inserted into your supervison tree when application is
+%% This is meant to be inserted into your supervision tree when application is
 %% ready (usually at the end).
 %%
 %% == Details ==
