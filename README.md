@@ -181,7 +181,7 @@ setting:
 ```erlang
 % Erlang
 [
-  {systemd, [{auto_formatter, false}]}
+  {systemd, [{install_kmsg, false}]}
 ].
 ```
 

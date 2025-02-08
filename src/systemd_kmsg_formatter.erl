@@ -42,7 +42,7 @@
 %% `systemd_journal_h'} handler (which <b>SHOULD NOT</b> be used with this
 %% formatter).
 %%
-%% To disable this behaviour set `auto_formatter' option for `systemd' to
+%% To disable this behaviour set `install_kmsg' option for `systemd' to
 %% `false'.
 %%
 %% == Example ==
