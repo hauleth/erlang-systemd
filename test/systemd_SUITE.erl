@@ -66,7 +66,7 @@ notify(Config) ->
     systemd:notify(stopping),
     {ok, <<"STOPPING=1\n">>} = recv(Socket),
     systemd:notify(reloading),
-    {ok, <<"RELOADING=1\n">>} = recv(Socket),
+    {ok, <<"RELOADING=1\nMONOTONIC_USEC=", _/binary>>} = recv(Socket),
     systemd:notify({status, "example status"}),
     {ok, <<"STATUS=example status\n">>} = recv(Socket),
     systemd:notify({errno, 10}),
@@ -255,12 +255,14 @@ socket(Config) ->
     ct:log("When started with invalid NOTIFY_SOCKET it is noop"),
     ok = start_with_path("/non/existent"),
     ok = systemd:notify(ready),
+    ok = empty(Socket),
     ok = stop(Config),
 
     % -------------------------------------------------------------------------
     ct:log("When started with empty NOTIFY_SOCKET it is noop"),
     ok = start_with_path(""),
     ok = systemd:notify(ready),
+    ok = empty(Socket),
     ok = stop(Config),
 
     % -------------------------------------------------------------------------

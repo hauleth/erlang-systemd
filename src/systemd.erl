@@ -156,25 +156,32 @@ unset_env(listen_fds) ->
 %% @end
 -spec notify(State :: state() | [state()]) -> ok.
 notify(States) when is_list(States) ->
-    systemd_socket:send([normalize_state(State) || State <- States], 0, []);
+    systemd_socket:send(normalize_state(States), 0, []);
 notify(State) ->
     notify([State]).
 
-normalize_state(ready) ->
-    {ready, "1"};
-normalize_state(stopping) ->
-    {stopping, "1"};
-normalize_state(reloading) ->
-    {reloading, "1"};
-normalize_state({errno, Errno}) when is_integer(Errno) ->
-    {"ERRNO", integer_to_binary(Errno)};
-normalize_state({buserror, Error}) ->
-    {"BUSERROR", Error};
-normalize_state({extend_timeout, {Time, Unit}}) when is_integer(Time) ->
+normalize_state([]) -> [];
+normalize_state([ready | Rest]) ->
+    [{ready, "1"} | normalize_state(Rest)];
+normalize_state([stopping | Rest]) ->
+    [{stopping, "1"} | normalize_state(Rest)];
+normalize_state([reloading | Rest]) ->
+    Microsecs = erlang:monotonic_time(microsecond),
+    [
+     {reloading, "1"},
+     {"MONOTONIC_USEC", integer_to_binary(Microsecs)}
+     | normalize_state(Rest)
+    ];
+normalize_state([{errno, Errno} | Rest]) when is_integer(Errno) ->
+    [{"ERRNO", integer_to_binary(Errno)} | normalize_state(Rest)];
+normalize_state([{buserror, Error} | Rest]) ->
+    [{"BUSERROR", Error} | normalize_state(Rest)];
+normalize_state([{extend_timeout, {Time, Unit}} | Rest]) when is_integer(Time) ->
     Microsecs = erlang:convert_time_unit(Time, Unit, microsecond),
-    {"EXTEND_TIMEOUT_USEC", integer_to_binary(Microsecs)};
-normalize_state({_, _} = Msg) ->
-    Msg.
+    [{"EXTEND_TIMEOUT_USEC", integer_to_binary(Microsecs)}
+     | normalize_state(Rest)];
+normalize_state([{_, _} = Msg | Rest]) ->
+    [Msg | normalize_state(Rest)].
 
 %% @doc
 %% Returns child spec for task that will inform systemd that application is
