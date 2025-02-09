@@ -43,7 +43,9 @@ defmodule PlugSystemdExample.Application do
 
         "bandit" ->
           [
-            {Bandit, basic_opts ++ [options: [port: port, transport_options: transport_opts]]}
+            {Bandit,
+             basic_opts ++
+               [thousand_island_options: [port: port, transport_options: transport_opts]]}
           ]
       end
 
@@ -79,8 +81,7 @@ defmodule PlugSystemdExample.Application do
 
     {0,
      [
-       port: 0,
-       net: :inet6,
+       :inet6,
        fd: fd
      ]}
   end
