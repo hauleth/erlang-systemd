@@ -14,7 +14,7 @@ RuntimeDirectory=%N
 # -kernel inet_backend socket'
 
 DynamicUser=true
-Type=notify
+Type=notify-reload
 ExecStart=/opt/plug/bin/plug start
 WatchdogSec=1min
 NotifyAccess=main
