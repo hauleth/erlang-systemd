@@ -1,6 +1,6 @@
 [Unit]
 Description=Echo service in Erlang
-Requires=epmd.socket
+; Requires=epmd.socket
 After=echo-tcp.socket echo-udp.socket
 BindsTo=echo-tcp.socket echo-udp.socket
 
@@ -8,12 +8,14 @@ BindsTo=echo-tcp.socket echo-udp.socket
 # Create required directories configure HOME
 Environment=HOME=/run/%N
 RuntimeDirectory=%N
+LogsDirectory=%N
 
 # Do not start EPMD as this is managed by `epmd.socket`
 Environment='ERL_FLAGS=-start_epmd false'
+Environment=ERL_CRASH_DUMP=/var/log/%N/erl_crash.dump
 
 DynamicUser=true
-Type=notify
+Type=notify-reload
 ExecStart=/opt/echo/bin/echo foreground
 WatchdogSec=1min
 NotifyAccess=main

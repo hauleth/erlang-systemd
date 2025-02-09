@@ -14,10 +14,7 @@
 start(_StartType, _StartArgs) ->
     case logger:add_handlers(systemd) of
         ok ->
-            case systemd:is_journal(standard_io) of
-                true -> logger:remove_handler(default);
-                _ -> ok
-            end;
+            logger:remove_handler(default);
         _ ->
             ok
     end,

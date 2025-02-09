@@ -36,7 +36,37 @@
 
 -record(state, {timeout, enabled}).
 
-start_link(Config) ->
+start_link(#{
+             watchdog_pid := WPid,
+             watchdog_timeout := WTimeout
+            }) ->
+    Pid = os:getpid(),
+    Enabled =
+        case WPid of
+            false -> true;
+            Pid -> true;
+            _ -> false
+        end,
+    Time =
+        case WTimeout of
+            false ->
+                infinity;
+            EnvTime ->
+                case string:to_integer(EnvTime) of
+                    {Timeout, ""} when Timeout > 0 ->
+                        erlang:convert_time_unit(
+                            Timeout,
+                            microsecond,
+                            millisecond
+                        );
+                    _ ->
+                        infinity
+                end
+        end,
+    Config = case {Enabled, Time} of
+        {_, infinity} -> {false, infinity};
+        Other -> Other
+    end,
     gen_server:start_link({local, ?WATCHDOG}, ?MODULE, Config, []).
 
 init({Enabled, Timeout}) ->
@@ -70,7 +100,7 @@ handle_info(keepalive, State) ->
     {noreply, State}.
 
 notify(#state{enabled = true, timeout = Timeout}) when
-    is_integer(Timeout), Timeout > 2
+    is_integer(Timeout), Timeout > 1
 ->
     {ok, Scale} = application:get_env(systemd, watchdog_scale),
     Check =

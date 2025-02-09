@@ -62,7 +62,7 @@ defmodule PlugSystemdExample.Router do
   get "/slow" do
     conn = send_chunked(conn, 200)
 
-    Enum.reduce_while('I am so sloooooow', conn, fn chunk, conn ->
+    Enum.reduce_while(~c'I am so sloooooow', conn, fn chunk, conn ->
       case chunk(conn, [chunk, "\n"]) do
         {:ok, conn} ->
           Process.sleep(500)

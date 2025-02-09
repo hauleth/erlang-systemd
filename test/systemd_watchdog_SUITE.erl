@@ -34,7 +34,6 @@ all() ->
         env_usec_is_non_int,
         state_control,
         server_restart,
-        unset_env,
         {group, func_check},
         {group, mfa_check}
     ].
@@ -108,10 +107,6 @@ end_per_testcase(_Name, Config) ->
     _ = socket:close(?config(socket, Config)),
     _ = file:delete(?config(path, Config)),
 
-    systemd:unset_env(notify),
-    systemd:unset_env(watchdog),
-    systemd:unset_env(listen_fds),
-
     Config.
 
 env_usec_set(Config) ->
@@ -130,6 +125,7 @@ env_pid_mismatch(Config) ->
     Socket = ?config(socket, Config),
 
     os:putenv("WATCHDOG_PID", "foo"),
+    systemd_env:clear(),
     ok = start_with_socket(Socket),
     false = systemd:watchdog(state),
     ct:sleep(300),
@@ -142,6 +138,7 @@ env_pid_match(Config) ->
     Timeout = ?config(timeout, Config),
 
     os:putenv("WATCHDOG_PID", os:getpid()),
+    systemd_env:clear(),
     ok = start_with_socket(Socket),
     Timeout = systemd:watchdog(state),
     ct:sleep(300),
@@ -154,6 +151,7 @@ invalid(Config) ->
     Socket = ?config(socket, Config),
 
     os:putenv("WATCHDOG_USEC", "0"),
+    systemd_env:clear(),
     ok = start_with_socket(Socket),
     false = systemd:watchdog(state),
     ok = empty(Socket),
@@ -242,26 +240,6 @@ server_restart(Config) ->
     gen_server:stop(systemd_watchdog, error, 100),
     {ok, <<"WATCHDOG=1\n">>} = recv(Socket),
     ok = empty(Socket),
-
-    ok.
-
-unset_env(Config) ->
-    Socket = ?config(socket, Config),
-
-    ok = start_with_socket(Socket),
-    false = os:getenv("WATCHDOG_PID"),
-    false = os:getenv("WATCHDOG_USEC"),
-
-    ok.
-
-do_not_unset_when_opted_out(Config) ->
-    Socket = ?config(socket, Config),
-
-    ok = application:set_env(systemd, unset_env, false),
-    ok = start_with_socket(Socket),
-    ?assertEqual(os:getpid(), os:getenv("WATCHDOG_PID")),
-    ?assertNotEqual(false, os:getenv("WATCHDOG_USEC")),
-    ok = application:set_env(systemd, unset_env, true),
 
     ok.
 
