@@ -12,6 +12,8 @@
 - fix typos
 
 ### Features
+- rename `auto_formatter` to `install_kmsg`
+- send monotonic timestamp when restarting
 - helper function for accessing credentials directory
 - add warning log message if there is no readiness message sent
 - send MAINPID message on socket start
