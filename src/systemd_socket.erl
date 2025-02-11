@@ -24,6 +24,7 @@
 -define(NAME, ?MODULE).
 
 -include_lib("kernel/include/logger.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -export([send/3]).
 
@@ -45,8 +46,20 @@ send(Data, Pid, Fds) when is_integer(Pid), is_list(Fds) ->
 
 -record(state, {socket, address, timer_ref}).
 
-start_link(Address) ->
-    gen_server:start_link({local, ?NAME}, ?MODULE, Address, []).
+start_link(#{notify_socket := Address}) ->
+    gen_server:start_link({local, ?NAME}, ?MODULE, path(Address), []).
+
+path(false) -> [];
+path([$@ | AbstractPath]) -> [0 | AbstractPath];
+path(Path) ->
+    case file:read_file_info(Path) of
+        {error, _Error} ->
+            [];
+        {ok, #file_info{access = Access}} when
+              Access =:= write; Access =:= read_write
+              ->
+            Path
+    end.
 
 init([]) ->
     {ok, []};
@@ -54,7 +67,7 @@ init(Address) ->
     {ok, Socket} = socket:open(local, dgram),
     TimerRef = set_timer(),
     State = #state{socket = Socket, address = Address, timer_ref = TimerRef},
-    _ = send_msg(State, systemd_protocol:encode([{"MAINPID", os:getpid()}]), 0, []),
+    %_ = send_msg(State, systemd_protocol:encode([{"MAINPID", os:getpid()}]), 0, []),
     {ok, State}.
 
 handle_call({send, Message, Pid, Fds}, _Ref, State0) ->

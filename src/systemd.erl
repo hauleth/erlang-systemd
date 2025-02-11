@@ -47,7 +47,6 @@
 -include("systemd_internal.hrl").
 
 -export([
-    unset_env/1,
     notify/1,
     ready/0,
     ready/1,
@@ -64,47 +63,6 @@
 ]).
 
 -export([notify_spawn/2]).
-
-%% @doc
-%% Unset environment variables for given subsystem.
-%%
-%% Most environment variables will be cleaned on startup by default. To prevent
-%% such behaviour set `unset_env' application variable to `false'.
-%%
-%% <dl>
-%%      <dt>`unset_env(notify)'</dt>
-%%      <dd>Unset variables used by {@link notify/1. `notify/1'}. This call will
-%%      be done automatically when the `unset_env' application option is set
-%%      (default). It is highly encouraged to unset these variables to prevent
-%%      them from being passed to subprocesses.</dd>
-%%      <dt>`unset_env(watchdog)'</dt>
-%%      <dd>Unset variables used by {@link watchdog/1. `watchdog/1'}. This call
-%%      will be done automatically when the `unset_env' application option is
-%%      set (default). It is highly encouraged to unset these variables
-%%      to prevent them from being passed to subprocesses.</dd>
-%%      <dt>`unset_env(listen_fds)'</dt>
-%%      <dd>Unset variables used by {@link listen_fds/0. `listen_fds/0'}. After
-%%      that all subsequent calls to `listen_fds' will return empty list. It is
-%%      highly encouraged to unset these variables to prevent them from being
-%%      passed to the subprocesses.</dd>
-%% </dl>
-%%
-%% @since 0.4.0
-%% @end
--spec unset_env(Subsystem) -> ok when
-    Subsystem :: notify | watchdog | listen_fds.
-unset_env(notify) ->
-    os:unsetenv(?NOTIFY_SOCKET),
-    ok;
-unset_env(watchdog) ->
-    os:unsetenv(?WATCHDOG_PID),
-    os:unsetenv(?WATCHDOG_TIMEOUT),
-    ok;
-unset_env(listen_fds) ->
-    os:unsetenv(?LISTEN_PID),
-    os:unsetenv(?LISTEN_FDS),
-    os:unsetenv(?LISTEN_FDNAMES),
-    ok.
 
 %% ----------------------------------------------------------------------------
 
@@ -166,7 +124,9 @@ normalize_state([ready | Rest]) ->
 normalize_state([stopping | Rest]) ->
     [{stopping, "1"} | normalize_state(Rest)];
 normalize_state([reloading | Rest]) ->
-    Microsecs = erlang:monotonic_time(microsecond),
+    % erlang:monotonic_time can return negative value so we adjust it to 64 bit
+    % positive integer
+    Microsecs = erlang:monotonic_time(microsecond) + 9223372036854775808,
     [
      {reloading, "1"},
      {"MONOTONIC_USEC", integer_to_binary(Microsecs)}
@@ -277,6 +237,7 @@ reload() -> reload([]).
 -spec reload(Opts :: [{mode, init:mode()}]) -> ok.
 reload(Opts) ->
     persistent_term:put({?MODULE, shutdown}, reloading),
+    systemd_env:reset(),
     init:restart(Opts).
 
 %% ----------------------------------------------------------------------------
@@ -312,7 +273,7 @@ reload(Opts) ->
 %%      <dd>Divider of the timeout to send messages more often than this is
 %%      required to prevent any jitter.
 %%
-%%      Defaults to `2' which will send messages twice as often as needed.</dd>
+%%      Defaults to `10' which will send messages 10 times as often as needed.</dd>
 %%      <dt>`watchdog_check'</dt>
 %%      <dd>Function (specified as 0-ary function or `mfa()') that will be ran
 %%      before pinging watchdog process. Such function should return `true' if
@@ -441,10 +402,11 @@ credentials(Name) ->
 %% @end
 -spec listen_fds() -> [fd()].
 listen_fds() ->
-    case check_listen_pid() of
+    Env = systemd_env:get(),
+    case check_listen_pid(Env) of
         true ->
-            Count = listen_fds_count(),
-            Names = listen_names(),
+            Count = listen_fds_count(Env),
+            Names = listen_names(Env),
             generate_fds(Count, Names);
         false ->
             []
@@ -492,11 +454,11 @@ clear_fds(Names) ->
         []
     ).
 
-check_listen_pid() ->
-    os:getenv(?LISTEN_PID) == os:getpid().
+check_listen_pid(#{listen_pid := ListenPid}) ->
+    ListenPid == os:getpid().
 
-listen_fds_count() ->
-    case os:getenv(?LISTEN_FDS) of
+listen_fds_count(#{listen_fds := ListenFds}) ->
+    case ListenFds of
         false ->
             0;
         Env ->
@@ -506,8 +468,8 @@ listen_fds_count() ->
             end
     end.
 
-listen_names() ->
-    case os:getenv(?LISTEN_FDNAMES) of
+listen_names(#{listen_fdnames := ListenFDNames}) ->
+    case ListenFDNames of
         false -> [];
         Env -> string:split(Env, ":", all)
     end.

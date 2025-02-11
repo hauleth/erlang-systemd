@@ -12,10 +12,22 @@
     stop/1,
     flush/1,
     recvmsg/1,
-    recv/1
+    recv/1,
+    app_paths/1
 ]).
 
-all() -> [notify, ready, ready_warning, listen_fds, socket, fds].
+all() ->
+    [
+     notify,
+     ready,
+     ready_warning,
+     listen_fds,
+     socket,
+     fds,
+     reload,
+     stopping,
+     sighup
+    ].
 
 init_per_testcase(Name, Config0) ->
     PrivDir = ?config(priv_dir, Config0),
@@ -45,9 +57,7 @@ end_per_testcase(Name, Config0) ->
     _ = socket:close(?config(socket, Config)),
     _ = file:delete(?config(path, Config)),
 
-    systemd:unset_env(notify),
-    systemd:unset_env(watchdog),
-    systemd:unset_env(listen_fds),
+    _ = systemd_env:clear(),
 
     Config.
 
@@ -156,8 +166,8 @@ listen_fds(finish, Config) ->
 listen_fds(_Config) ->
     % -------------------------------------------------------------------------
     ct:log("When no environment variables it returns empty list"),
+    systemd_env:clear(),
     ?assertEqual([], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log(
@@ -165,16 +175,16 @@ listen_fds(_Config) ->
     ),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "3"),
+    systemd_env:clear(),
     ?assertEqual([], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When LISTEN_PID mismatch it returns empty list"),
     os:putenv("LISTEN_PID", "foo"),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar:baz"),
+    systemd_env:clear(),
     ?assertEqual([], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log(
@@ -182,67 +192,67 @@ listen_fds(_Config) ->
     ),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
+    systemd_env:clear(),
     ?assertEqual(3, length(systemd:listen_fds())),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When LISTEN_FDS is not set, it is assumed to be 0"),
     os:putenv("LISTEN_PID", os:getpid()),
+    systemd_env:clear(),
     ?assertEqual([], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When LISTEN_FDS is not integer, it is assumed to be 0"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "foo"),
+    systemd_env:clear(),
     ?assertEqual([], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "1.0"),
+    systemd_env:clear(),
     ?assertEqual([], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("Returned list has PIDs with respective names"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar:baz"),
+    systemd_env:clear(),
     ?assertMatch([{_, "foo"}, {_, "bar"}, {_, "baz"}], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When subsequent calls will return the same data"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar:baz"),
+    systemd_env:clear(),
     First = systemd:listen_fds(),
     First = systemd:listen_fds(),
-    systemd:unset_env(listen_fds),
-    [] = systemd:listen_fds(),
-    [] = systemd:listen_fds(),
 
     % -------------------------------------------------------------------------
     ct:log("When name is empty it returns raw FD"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo::baz"),
+    systemd_env:clear(),
     ?assertMatch([{_, "foo"}, _, {_, "baz"}], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     % -------------------------------------------------------------------------
     ct:log("When names list is shorter it returns raw FDs"),
     os:putenv("LISTEN_PID", os:getpid()),
     os:putenv("LISTEN_FDS", "3"),
     os:putenv("LISTEN_FDNAMES", "foo:bar"),
+    systemd_env:clear(),
     ?assertMatch([{_, "foo"}, {_, "bar"}, _], systemd:listen_fds()),
-    systemd:unset_env(listen_fds),
 
     ok.
 
 socket(Config) ->
     ct:log("~p", [Config]),
     Socket = ?config(socket, Config),
+
+    stop(Config),
 
     % -------------------------------------------------------------------------
     ct:log("When started without NOTIFY_SOCKET it is noop"),
@@ -273,17 +283,6 @@ socket(Config) ->
     ok = empty(Socket),
     false = os:getenv("NOTIFY_SOCKET"),
     ok = stop(Config),
-
-    % -------------------------------------------------------------------------
-    ct:log("Do not unset NOTIFY_SOCKET when unset_env is false"),
-    ok = application:set_env(systemd, unset_env, false),
-    ok = start_with_socket(Socket),
-    ok = systemd:notify(ready),
-    {ok, <<"READY=1\n">>} = recv(Socket),
-    ok = empty(Socket),
-    ?assertEqual(?config(path, Config), os:getenv("NOTIFY_SOCKET")),
-    ok = stop(Config),
-    ok = application:set_env(systemd, unset_env, true),
 
     ok.
 
@@ -326,6 +325,48 @@ fds(Config) ->
     systemd:clear_fds(["foo", "bar"]),
     {ok, <<"FDSTOREREMOVE=1\nFDNAMES=foo:bar\n">>} = recv(Socket),
 
+    ok.
+
+reload(Config) ->
+    Socket = ?config(socket, Config),
+    {ok, #{path := Path}} = socket:sockname(Socket),
+    {ok, Peer, _Node} = ?CT_PEER(
+                           #{
+                             connection => standard_io,
+                             env => [
+                                     {"NOTIFY_SOCKET", binary_to_list(Path)}
+                                    ]
+                            }),
+    ok = peer:call(Peer, code, add_pathsa, [app_paths(systemd)]),
+    {ok, _} = peer:call(Peer, application, ensure_all_started, [systemd]),
+    ok = peer:call(Peer, systemd, reload, []),
+    {ok, <<"RELOADING=1\nMONOTONIC_USEC=", _/binary>>} = recv(Socket),
+    peer:stop(Peer),
+    ok.
+
+stopping(Config) ->
+    Socket = ?config(socket, Config),
+    ok = start_with_socket(Socket),
+    ok = application:stop(systemd),
+    {ok, <<"STOPPING=1\n">>} = recv(Socket).
+
+sighup(Config) ->
+    Socket = ?config(socket, Config),
+    {ok, #{path := Path}} = socket:sockname(Socket),
+    {ok, Peer, _Node} = ?CT_PEER(
+                           #{
+                             connection => standard_io,
+                             env => [
+                                     {"NOTIFY_SOCKET", binary_to_list(Path)}
+                                    ]
+                            }),
+    ok = peer:call(Peer, code, add_pathsa, [app_paths(systemd)]),
+    {ok, _} = peer:call(Peer, application, ensure_all_started, [systemd]),
+    OsPID = peer:call(Peer, os, getpid, []),
+    os:cmd("kill -HUP " ++ OsPID),
+    {ok, <<"RELOADING=1\nMONOTONIC_USEC=", _/binary>>} = recv(Socket),
+    %{ok, <<"READY=1\n">>} = recv(Socket),
+    peer:stop(Peer),
     ok.
 
 empty(S) ->
