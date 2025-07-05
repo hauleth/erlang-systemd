@@ -35,6 +35,18 @@ defp deps do
 end
 ```
 
+Add systemd to the list of applications in your `.app.src` file:
+
+```erlang
+  {applications,
+   [kernel
+   ,stdlib
+   ,systemd
+   :
+   :
+   ]},
+```
+
 Then call `systemd:notify(ready)` when your application is ready to work/accept
 connections or add `systemd:ready()` as a child of your application's main supervisor.
 
