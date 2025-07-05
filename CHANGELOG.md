@@ -12,6 +12,7 @@
 - fix typos
 
 ### Features
+- add support for `notify-reload` and automatic reload handling
 - rename `auto_formatter` to `install_kmsg`
 - send monotonic timestamp when restarting
 - helper function for accessing credentials directory
