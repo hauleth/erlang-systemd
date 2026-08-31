@@ -251,6 +251,24 @@ output(_Config) ->
         log(debug, "foo", #{})
     ),
 
+    % `script_id' is the boot script name and version
+    {ScriptName, ScriptVsn} = init:script_id(),
+    BinName = unicode:characters_to_binary(ScriptName),
+    BinVsn = unicode:characters_to_binary(ScriptVsn),
+    ok = logger:update_handler_config(example, config, #{fields => [script_id]}),
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nSCRIPT_ID=", BinName/binary, " ", BinVsn/binary, "\n">>},
+        log(debug, "foo", #{})
+    ),
+
+    % `script_name' is the boot script name without the version, so that the
+    % resulting identifier is stable across releases
+    ok = logger:update_handler_config(example, config, #{fields => [script_name]}),
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nSCRIPT_NAME=", BinName/binary, "\n">>},
+        log(debug, "foo", #{})
+    ),
+
     % `pid' is printed as Erlang PID
     ok = logger:update_handler_config(example, config, #{fields => [pid]}),
     Pid = iolist_to_binary(pid_to_list(self())),
