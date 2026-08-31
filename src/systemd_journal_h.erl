@@ -109,6 +109,10 @@
 %%      <dt>`script_id'</dt>
 %%      <dd>String in form of `{Name} {Vsn}' where `Name' and `Vsn' are replaced
 %%      by 1st and 2nd value in tuple returned by `init:script_id()'</dd>
+%%      <dt>`script_name'</dt>
+%%      <dd>Just the `Name' part of `init:script_id()', without the version.
+%%      Preferred for `SYSLOG_IDENTIFIER', since a version-qualified identifier
+%%      changes on every release and breaks `journalctl -t {Name}'.</dd>
 %% </dl>
 %%
 %% Otherwise field is treated as a entry key where `key' is equivalent of
@@ -402,6 +406,13 @@ get_field(script_id, _Meta) ->
     case init:script_id() of
         {Name, Vsn} ->
             [Name, " ", Vsn];
+        _ ->
+            <<"beam">>
+    end;
+get_field(script_name, _Meta) ->
+    case init:script_id() of
+        {Name, _Vsn} ->
+            Name;
         _ ->
             <<"beam">>
     end;
