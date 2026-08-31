@@ -128,7 +128,7 @@
 %%      <dt>`syslog_timestamp'</dt>
 %%      <dd>Will work exactly the same as `{"SYSLOG_TIMESTAMP", time}'.</dd>
 %%      <dt>`syslog_identifier'</dt>
-%%      <dd>Will work exactly the same as `{"SYSLOG_IDENTIFIER", script_id}'.</dd>
+%%      <dd>Will work exactly the same as `{"SYSLOG_IDENTIFIER", script_name}'.</dd>
 %% </dl>
 %%
 %% @since 0.3.0
@@ -268,6 +268,7 @@ changing_config(set, #{config := OldHConfig}, NewConfig) ->
 
 translate_field(syslog_timestamp) -> {"SYSLOG_TIMESTAMP", time};
 translate_field(syslog_pid) -> {"SYSLOG_PID", os_pid};
+translate_field(syslog_identifier) -> {"SYSLOG_IDENTIFIER", script_name};
 translate_field(Atom) when is_atom(Atom) -> {Atom, Atom};
 translate_field({_Name, _Data} = Field) -> Field.
 

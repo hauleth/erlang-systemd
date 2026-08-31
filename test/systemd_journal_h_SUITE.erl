@@ -269,6 +269,23 @@ output(_Config) ->
         log(debug, "foo", #{})
     ),
 
+    % `syslog_identifier' is an alias for `script_name'. Regression test: it used
+    % to fall through to `translate_field(Atom) -> {Atom, Atom}', which resolved
+    % it as a never-set metadata key and emitted an empty SYSLOG_IDENTIFIER,
+    % breaking `journalctl -t NAME'.
+    ok = logger:update_handler_config(example, config, #{
+        fields => [syslog_identifier]
+    }),
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nSYSLOG_IDENTIFIER=", BinName/binary, "\n">>},
+        log(debug, "foo", #{})
+    ),
+    % ...and must not be shadowed by unrelated metadata of the same name
+    ?assertEqual(
+        {log, <<"MESSAGE=foo\nSYSLOG_IDENTIFIER=", BinName/binary, "\n">>},
+        log(debug, "foo", #{syslog_identifier => "bogus"})
+    ),
+
     % `pid' is printed as Erlang PID
     ok = logger:update_handler_config(example, config, #{fields => [pid]}),
     Pid = iolist_to_binary(pid_to_list(self())),
