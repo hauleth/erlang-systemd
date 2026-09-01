@@ -4,6 +4,7 @@
 ### Bug Fixes
 - typespecs for watchdog/1
 - fix dialyzer error for systemd:set_status/1
+- **journal_h:** `syslog_identifier` emits an empty SYSLOG_IDENTIFIER
 - **journal_h:** Dialyzer error
 
 ### Documentation
@@ -12,12 +13,13 @@
 - fix typos
 
 ### Features
+- send MAINPID message on socket start
 - add support for `notify-reload` and automatic reload handling
 - rename `auto_formatter` to `install_kmsg`
 - send monotonic timestamp when restarting
 - helper function for accessing credentials directory
 - add warning log message if there is no readiness message sent
-- send MAINPID message on socket start
+- **journal_h:** add `script_name` field
 
 
 <a name="v0.6.2"></a>
